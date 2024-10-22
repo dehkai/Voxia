@@ -1,1 +1,1 @@
-# CodeCrafters
+# Voxia - AI Smart Assistant
