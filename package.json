@@ -17,6 +17,11 @@
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.5",
     "@mui/material": "^6.1.5",
+    "@mui/x-charts": "^7.21.0",
+    "@mui/x-data-grid": "^7.21.0",
+    "@mui/x-date-pickers": "^7.21.0",
+    "@mui/x-tree-view": "^7.21.0",
+    "@react-spring/web": "^9.7.5",
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.5",
     "mongodb": "^6.3.0"
