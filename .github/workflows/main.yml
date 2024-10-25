@@ -3,10 +3,10 @@ name: Build and Deploy Docker
 on:
   push:
     branches:
-      - main  # Change this to your default branch if needed
+      - main  
   pull_request:
     branches:
-      - main  # Change this to your default branch if needed
+      - main  
 
 jobs:
   build:
@@ -14,14 +14,14 @@ jobs:
 
     services:
       backend:
-        image: dehkai/voxia-backend  # Your backend image
+        image: dehkai/voxia-backend:v1.0  
         ports:
           - 5000:5000
         env:
           NODE_ENV: production
 
       frontend:
-        image: dehkai/voxia-frontend  # Your frontend image
+        image: dehkai/voxia-frontend:v1.0  
         ports:
           - 3000:3000
 
@@ -34,8 +34,8 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker build -t dehkai/voxia-backend ./backend
-          docker build -t dehkai/voxia-frontend ./frontend
+          docker build -t dehkai/voxia-backend:v1.0 ./backend
+          docker build -t dehkai/voxia-frontend:v1.0 ./frontend
 
       - name: Run Docker Compose
         run: docker-compose up -d --build
@@ -55,5 +55,5 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker push dehkai/voxia-backend
-          docker push dehkai/voxia-frontend
+          docker push dehkai/voxia-backend:v1.0
+          docker push dehkai/voxia-frontend:v1.0
