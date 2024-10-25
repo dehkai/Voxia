@@ -1,12 +1,12 @@
-name: Build and Deploy Docker
+name: Build and Push Docker Images
 
 on:
   push:
     branches:
-      - main  # Change this to your default branch if needed
+      - main 
   pull_request:
     branches:
-      - main  # Change this to your default branch if needed
+      - main
 
 jobs:
   build:
@@ -29,26 +29,11 @@ jobs:
           echo "DB_USER=${{ secrets.DB_USER }}" > ./backend/.env
           echo "DB_PASS=${{ secrets.DB_PASS }}" >> ./backend/.env
           # Add more environment variables as needed
-          echo "ANOTHER_ENV_VAR=${{ secrets.ANOTHER_ENV_VAR }}" >> ./backend/.env
 
       - name: Build Docker images
         run: |
           docker build -t dehkai/voxia-backend:v1.0 ./backend
           docker build -t dehkai/voxia-frontend:v1.0 ./frontend
-
-      - name: Run Docker Compose
-        run: docker-compose up -d --build
-
-      - name: Wait for services to be healthy
-        run: |
-          sleep 15  # Wait for the services to start up
-          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:5000/health  # Change this endpoint to your backend health check
-          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:3000/health  # Change this endpoint to your frontend health check
-
-      - name: Run tests
-        run: |
-          docker exec -it backend npm test  # Modify this command as necessary to run your tests
-          docker exec -it frontend npm test  # Modify this command as necessary to run your tests
 
       - name: Push Docker images
         if: github.ref == 'refs/heads/main'
