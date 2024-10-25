@@ -3,10 +3,10 @@ name: Build and Deploy Docker
 on:
   push:
     branches:
-      - main  
+      - main  # Change this to your default branch if needed
   pull_request:
     branches:
-      - main  
+      - main  # Change this to your default branch if needed
 
 jobs:
   build:
@@ -23,6 +23,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
+
+      - name: Create .env file from secrets
+        run: |
+          echo "DB_USER=${{ secrets.DB_USER }}" > ./backend/.env
+          echo "DB_PASS=${{ secrets.DB_PASS }}" >> ./backend/.env
+          # Add more environment variables as needed
+          echo "ANOTHER_ENV_VAR=${{ secrets.ANOTHER_ENV_VAR }}" >> ./backend/.env
 
       - name: Build Docker images
         run: |
