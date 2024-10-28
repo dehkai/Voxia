@@ -1,21 +1,10 @@
-FROM node:16
-
-WORKDIR /app
-
-# Copy package.json and package-lock.json
+#frontend/Dockerfile
+FROM node:14.0.0
+# Create app directory
+WORKDIR /usr/src/app
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of your application
+# Bundle app source
 COPY . .
-
-# Build the app
-RUN npm run build
-
-# Expose the port
+RUN npm install
 EXPOSE 3000
-
-# Serve the app
-CMD ["npm", "start"]
+CMD [ "npm", "start" ]

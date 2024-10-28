@@ -1,31 +1,67 @@
+version: "3"
 services:
   backend:
-    build: ./backend
     container_name: backend
+    build: ./node/backend 
     ports:
-      - '5000:5000'
+      - 8800:8800 
     volumes:
-      - ./backend:/app
-    command: npx nodemon index.js  # Use nodemon for auto-reloading in development
-    restart: always
-    env_file:
-      - ./backend/.env
-    networks:
-      - Voxia
+      - ./node/backend:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=8800
+    depends_on:
+      - mongo
+  
+  mongo:
+    image: mongo:3.6
+    volumes:
+      - mongo-storage:/data/db
+    expose:
+      - 27017
+    ports:
+      - 27017:27017
 
   frontend:
-    build: ./frontend
     container_name: frontend
+    build: ./node/frontend
     ports:
-      - '3000:3000'
+      - "3000:3000"    
+    volumes:
+      - './node/frontend:/usr/src/app'
+      - '/usr/src/app/node_modules'
     depends_on:
       - backend
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+  
+  rasa:
+    image: rasa/rasa:2.0.4-full
+    user: "${UID}:${GID}"
+    ports:
+      - "5005:5005"
     volumes:
-      - ./frontend:/app
-    restart: always
-    networks:
-      - Voxia
+      - "./rasa/app/:/app/"
+    command:
+      - run
+      - --endpoints 
+      - endpoints.yml
+      - --debug
 
-networks:
-    Voxia:
-      driver: bridge
+  action_server:
+    image: rasa/rasa-sdk:2.0.0
+    user: "${UID}:${GID}"
+    ports:
+      - "5055:5055"
+    volumes:
+      - "./rasadocker/app/actions:/app/actions"
+
+  duckling:
+    image: rasa/duckling:latest
+    user: "${UID}:${GID}"
+    ports:
+      - "8000:8000"
+
+volumes:
+  mongo-storage:
+    driver: local

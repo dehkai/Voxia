@@ -1,20 +1,13 @@
-# Use a node base image
-FROM node:16
-
-# Set the working directory
-WORKDIR /app
-
-# Copy the package.json and package-lock.json
+#backend/Dockerfile
+FROM node:10.19.0
+# Create app directory
+WORKDIR /usr/src/app
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
 COPY package*.json ./
-
-# Install dependencies, including devDependencies
-RUN npm install
-
-# Copy the rest of your application files
+# Bundle app source
 COPY . .
-
-# Expose the port
+# Install app dependencies
+RUN npm install -g nodemon
+RUN npm install
 EXPOSE 5000
-
-# Use nodemon for development to watch for file changes
-CMD ["npx", "nodemon", "index.js"]
+CMD [ "nodemon", "server.js" ]
