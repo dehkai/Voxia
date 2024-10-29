@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState,useContext } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -17,6 +17,9 @@ import ForgotPassword from '../components/sign-in/ForgotPassword';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from '../components/sign-in/CustomIcons';
 import AppTheme from '../shared-theme/AppTheme';
 import ColorModeSelect from '../shared-theme/ColorModeSelect';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../utils/auth';
+
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -61,36 +64,89 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
 }));
 
 export default function SignIn(props) {
-  const [emailError, setEmailError] = React.useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
-  const [passwordError, setPasswordError] = React.useState(false);
-  const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
-  const [open, setOpen] = React.useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [emailErrorMessage, setEmailErrorMessage] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+  const [passwordErrorMessage, setPasswordErrorMessage] = useState('');
+  const [open, setOpen] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false); // Add state for remember me
+  const [isLoading, setIsLoading] = useState(false); // Add loading state
+  const navigate = useNavigate();
+  const auth = useContext(AuthContext);
 
-  const handleClickOpen = () => {
-    setOpen(true);
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  // Add handler for remember me checkbox
+  const handleRememberMe = (event) => {
+    setRememberMe(event.target.checked);
   };
 
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setIsLoading(true);
 
-  const handleSubmit = (event) => {
-    if (emailError || passwordError) {
-      event.preventDefault();
-      return;
+    try {
+      if (!validateInputs()) {
+        setIsLoading(false);
+        return;
+      }
+
+      const formData = new FormData(event.currentTarget);
+      const email = formData.get('email');
+      const password = formData.get('password');
+
+      console.log('Attempting login with:', { email });
+
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      console.log('Response status:', response.status);
+
+      const result = await response.json();
+      console.log('Login response:', result);
+
+      if (response.ok) {
+        // Store user data in the selected storage based on rememberMe state
+        const storage = rememberMe ? localStorage : sessionStorage;
+        
+        // Store the data
+        storage.setItem('token', result.token);
+        storage.setItem('user', JSON.stringify(result.user));
+
+        // Update auth context
+        auth.login();
+
+        // Wait a brief moment to ensure state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Navigate based on role with replace to prevent back navigation
+        const dashboardRoute = result.user.role === 'admin' ? '/admin_dashboard' : '/employee_dashboard';
+        navigate(dashboardRoute, { replace: true });
+      } else {
+        setEmailError(true);
+        setEmailErrorMessage(result.message || 'Invalid credentials');
+        console.error('Login failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setEmailError(true);
+      setEmailErrorMessage('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get('email'),
-      password: data.get('password'),
-    });
   };
 
   const validateInputs = () => {
     const email = document.getElementById('email');
     const password = document.getElementById('password');
-
     let isValid = true;
 
     if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
@@ -147,7 +203,7 @@ export default function SignIn(props) {
                 id="email"
                 type="email"
                 name="email"
-                placeholder="your@email.com"
+                placeholder="your@origtek.com.my"
                 autoComplete="email"
                 autoFocus
                 required
@@ -163,7 +219,7 @@ export default function SignIn(props) {
                 <Link
                   component="button"
                   type="button"
-                  onClick={handleClickOpen}
+                  onClick={handleClickOpen} // Open "Forgot Password" dialog
                   variant="body2"
                   sx={{ alignSelf: 'baseline' }}
                 >
@@ -186,30 +242,25 @@ export default function SignIn(props) {
               />
             </FormControl>
             <FormControlLabel
-              control={<Checkbox value="remember" color="primary" />}
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={handleRememberMe}
+                  name="remember"
+                  color="primary"
+                />
+              }
               label="Remember me"
             />
             <ForgotPassword open={open} handleClose={handleClose} />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              onClick={validateInputs}
+            <Button 
+              type="submit" 
+              fullWidth 
+              variant="contained" 
+              disabled={isLoading}
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
-            <Typography sx={{ textAlign: 'center' }}>
-              Don&apos;t have an account?{' '}
-              <span>
-                <Link
-                  href="/material-ui/getting-started/templates/sign-in/"
-                  variant="body2"
-                  sx={{ alignSelf: 'center' }}
-                >
-                  Sign up
-                </Link>
-              </span>
-            </Typography>
           </Box>
           <Divider>or</Divider>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
