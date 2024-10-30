@@ -26,6 +26,39 @@ services:
     networks:
       - Voxia
 
+  rasa:
+    image: rasa/rasa:2.0.4-full
+    user: "1000:1000"
+    ports:
+      - "5005:5005"
+    volumes:
+      - "./rasa/app/:/app/"
+    command:
+      - run
+      - --endpoints 
+      - endpoints.yml
+      - --debug
+    networks:
+      - Voxia
+
+  action_server:
+    image: rasa/rasa-sdk:2.0.0
+    user: "1000:1000"
+    ports:
+      - "5055:5055"
+    volumes:
+      - "./rasadocker/app/actions:/app/actions"
+    networks:
+      - Voxia
+
+  duckling:
+    image: rasa/duckling:latest
+    user: "1000:1000"
+    ports:
+      - "8000:8000"
+    networks:
+      - Voxia
+
 networks:
     Voxia:
       driver: bridge
