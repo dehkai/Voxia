@@ -12,6 +12,8 @@ services:
       - ./backend/.env
     networks:
       - Voxia
+    profiles:
+      - dev
 
   frontend:
     build: ./frontend
@@ -25,6 +27,34 @@ services:
     restart: always
     networks:
       - Voxia
+    profiles:
+      - dev
+
+  backend_prod:
+    image: ${BACKEND_IMAGE_PROD}
+    container_name: backend_prod
+    ports:
+      - '5000:5000'
+    env_file:
+      - ./.env
+    networks:
+      - Voxia
+    profiles:
+      - prod
+
+  frontend_prod:
+    image: ${FRONTEND_IMAGE_PROD}
+    container_name: frontend_prod
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend_prod
+    env_file:
+      - ./.env
+    networks:
+      - Voxia
+    profiles:
+      - prod
 
   rasa:
     image: rasa/rasa:2.0.4-full

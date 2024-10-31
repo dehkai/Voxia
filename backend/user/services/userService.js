@@ -1,6 +1,7 @@
-// services/authService.js
+require('dotenv').config({ path: '.backend.env' });
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your_secret_key';
 
