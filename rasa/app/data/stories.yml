@@ -1,18 +1,19 @@
-version: "2.0"
-
 stories:
 
 - story: happy path
   steps:
   - intent: greet
   - action: utter_greet
-  - intent: mood_great
+  - action: utter_ask_destination
+  - intent: provide_location
   - action: utter_happy
 
 - story: sad path 1
   steps:
   - intent: greet
   - action: utter_greet
+  - action: utter_ask_destination
+  - intent: provide_location
   - intent: mood_unhappy
   - action: utter_cheer_up
   - action: utter_did_that_help
@@ -23,8 +24,78 @@ stories:
   steps:
   - intent: greet
   - action: utter_greet
+  - action: utter_ask_destination
+  - intent: provide_location
   - intent: mood_unhappy
   - action: utter_cheer_up
   - action: utter_did_that_help
   - intent: deny
   - action: utter_goodbye
+
+- story: complete flight booking
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - action: utter_ask_origin
+  - intent: provide_location
+  - action: utter_ask_destination
+  - intent: provide_location
+  - action: utter_ask_departure_date
+  - intent: provide_travel_dates
+  - action: action_search_flights
+  - action: utter_happy
+
+- story: incomplete origin
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - action: utter_ask_origin
+  - intent: provide_location
+  - action: utter_ask_destination
+  - intent: provide_location
+  - action: utter_ask_departure_date
+  - intent: mood_unhappy
+  - action: utter_cheer_up
+  - action: utter_did_that_help
+  - intent: deny
+  - action: utter_goodbye
+
+# - story: invalid origin input
+#   steps:
+#   - intent: greet
+#   - action: utter_greet
+#   - action: utter_ask_origin
+#   - intent: provide_location
+#   - action: validate_origin
+#   - action: utter_ask_destination
+#   - intent: provide_location
+#   - action: utter_ask_departure_date
+#   - intent: provide_travel_dates
+#   - action: action_search_flights
+#   - action: utter_happy
+
+- story: no flights found
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - action: utter_ask_origin
+  - intent: provide_location
+  - action: utter_ask_destination
+  - intent: provide_location
+  - action: utter_ask_departure_date
+  - intent: provide_travel_dates
+  - action: action_search_flights
+  - action: utter_no_flights_found
+
+- story: user asks for hotel options
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - action: utter_ask_city
+  - intent: provide_location
+  - action: utter_ask_check_in
+  - intent: provide_travel_dates
+  - action: utter_ask_check_out
+  - intent: provide_travel_dates
+  - action: action_search_hotels
+  - action: utter_happy

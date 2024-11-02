@@ -1,13 +1,74 @@
 version: "2.0"
 
 rules:
+  - rule: Activate flight search form
+    steps:
+      - intent: search_flights
+      - action: flight_search_form
+      - active_loop: flight_search_form
 
-- rule: Say goodbye anytime the user says goodbye
-  steps:
-  - intent: goodbye
-  - action: utter_goodbye
+  - rule: Submit flight search form
+    condition:
+      - active_loop: flight_search_form
+    steps:
+      - action: flight_search_form
+      - active_loop: null
+      - action: action_search_flights
 
-- rule: Say 'I am a bot' anytime the user challenges
-  steps:
-  - intent: bot_challenge
-  - action: utter_iamabot
+  - rule: Activate hotel search form
+    steps:
+      - intent: search_hotels
+      - action: hotel_search_form
+      - active_loop: hotel_search_form
+
+  - rule: Submit hotel search form
+    condition:
+      - active_loop: hotel_search_form
+    steps:
+      - action: hotel_search_form
+      - active_loop: null
+      - action: action_search_hotels
+
+  # - rule: Validate flight search form input
+  #   condition:
+  #     - active_loop: flight_search_form
+  #   steps:
+  #     - action: validate_flight_search_form
+  #     - action: flight_search_form
+
+  # - rule: Validate hotel search form input
+  #   condition:
+  #     - active_loop: hotel_search_form
+  #   steps:
+  #     - action: validate_hotel_search_form
+  #     - action: hotel_search_form
+
+  # - rule: Provide help on demand
+  #   steps:
+  #     - intent: ask_for_help
+  #     - action: utter_help
+
+  # - rule: Handle invalid flight search input
+  #   condition:
+  #     - active_loop: flight_search_form
+  #   steps:
+  #     - action: utter_invalid_flight_input
+  #     - action: flight_search_form
+
+  # - rule: Handle invalid hotel search input
+  #   condition:
+  #     - active_loop: hotel_search_form
+  #   steps:
+  #     - action: utter_invalid_hotel_input
+  #     - action: hotel_search_form
+
+  # Additional rule examples for other simple responses
+  - rule: Say goodbye anytime the user says goodbye
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - rule: Say 'I am a bot' anytime the user challenges
+    steps:
+      - intent: bot_challenge
+      - action: utter_iamabot

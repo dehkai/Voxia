@@ -8,10 +8,62 @@ intents:
   - mood_great
   - mood_unhappy
   - bot_challenge
+  - search_flights
+  - search_hotels
+  - provide_travel_dates
+  - provide_location
+
+entities:
+  - airport_code
+  - city_code
+  - date
+
+slots:
+  origin:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: airport_code
+    influence_conversation: true
+  
+  destination:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: airport_code
+    influence_conversation: true
+  
+  departure_date:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+  
+  city:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: city_code
+    influence_conversation: true
+  
+  check_in:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+  
+  check_out:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
 
 responses:
   utter_greet:
-  - text: "Hey! How are you? test"
+    - text: "Hey! How can I help you with your travel plans today?"
 
   utter_cheer_up:
   - text: "Here is something to cheer you up:"
@@ -20,14 +72,71 @@ responses:
   utter_did_that_help:
   - text: "Did that help you?"
 
-  utter_happy:
-  - text: "Great, carry on!"
-
   utter_goodbye:
-  - text: "Bye"
+    - text: "Have a great trip! Goodbye!"
+
+  utter_affirm:
+    - text: "Great! Let me help you with that."
+
+  utter_deny:
+    - text: "No problem. Is there something else I can help you with?"
 
   utter_iamabot:
-  - text: "I am a bot, powered by Rasa."
+    - text: "I am a travel assistant bot, powered by Rasa."
+
+  utter_ask_origin:
+    - text: "Which city are you flying from? (Please provide the airport code, e.g., 'LON' for London)"
+
+  utter_ask_destination:
+    - text: "Where would you like to fly to? (Please provide the airport code, e.g., 'NYC' for New York)"
+
+  utter_ask_departure_date:
+    - text: "When would you like to travel? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_ask_city:
+    - text: "Which city would you like to stay in? (Please provide the city code, e.g., 'PAR' for Paris)"
+
+  utter_ask_check_in:
+    - text: "What's your check-in date? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_ask_check_out:
+    - text: "What's your check-out date? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_submit:
+    - text: "I'll search for the best options for you right away."
+
+  utter_happy:
+    - text: "I'm glad to hear that!"
+
+  utter_no_flights_found:
+    - text: "Sorry, no flights were found matching your criteria. Please try again with different details."
+  
+  # utter_help:
+  #   - text: "How can I assist you today? You can ask me to search for flights or hotels."
+
+  utter_slots_values:
+    - text: "I have these details from you:\n
+            From: {origin}\n
+            To: {destination}\n
+            Date: {departure_date}"
+
+actions:
+  - action_search_flights
+  - action_search_hotels
+  - validate_flight_search_form
+
+forms:
+  flight_search_form:
+    required_slots:
+      - origin
+      - destination
+      - departure_date
+
+  hotel_search_form:
+    required_slots:
+      - city
+      - check_in
+      - check_out
 
 session_config:
   session_expiration_time: 60
