@@ -8,6 +8,8 @@ import {
 import SignIn from "./pages/SignIn";
 import AdminDashboard from "./pages/Admin_Dashboard";
 import EmployeeDashboard from "./pages/Employee_Dashboard";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";  // Import the ResetPassword component
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
 
 function App() {
@@ -57,6 +59,14 @@ function App() {
                 <Navigate to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />
               )
             }
+          />
+          <Route 
+            path="/forgot-password" 
+            element={<ForgotPassword />}  // Forgot Password Route
+          />
+          <Route 
+            path="/reset-password" 
+            element={<ResetPassword />}  // Reset Password Route
           />
         </Routes>
       </Router>
