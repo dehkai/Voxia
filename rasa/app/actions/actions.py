@@ -4,11 +4,15 @@ from rasa_sdk.executor import CollectingDispatcher
 from amadeus import Client, ResponseError
 from datetime import datetime
 import logging
-from .env_loader import setup_credentials  
 from rasa_sdk.forms import FormValidationAction
 from rasa_sdk.types import DomainDict
+from dotenv import load_dotenv
+import os
 
-# Set up logging
+# Load environment variables
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
+load_dotenv(dotenv_path=env_path)
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,22 +23,36 @@ class AmadeusClient:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # Get credentials from processed credentials file
-            credentials = setup_credentials()  # Keep using existing setup_credentials
-            amadeus_creds = credentials.get('amadeus', {})
-            
-            # Initialize with test environment
-            cls._instance.client = Client(
-                client_id=amadeus_creds['client_id'],
-                client_secret=amadeus_creds['client_secret'],
-                hostname='test'  # Add test environment
-            )
-            logger.info("Initialized Amadeus client in test environment")
+            try:
+                # Get credentials from environment variables
+                client_id = os.getenv("AMADEUS_CLIENT_ID")
+                client_secret = os.getenv("AMADEUS_CLIENT_SECRET")
+                
+                if not client_id or not client_secret:
+                    logger.error("Amadeus credentials not found in environment variables")
+                    raise ValueError("Amadeus credentials not found in environment variables")
+                
+                # Log credential presence (safely)
+                logger.info("Amadeus credentials found:")
+                logger.info(f"client_id length: {len(client_id)}")
+                logger.info(f"client_secret length: {len(client_secret)}")
+                
+                # Initialize client
+                cls._instance.client = Client(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    hostname='test'
+                )
+                logger.info("Successfully initialized Amadeus client")
+            except Exception as e:
+                logger.error(f"Failed to initialize Amadeus client: {str(e)}")
+                raise
         return cls._instance
 
     @property
     def amadeus(self):
         return self.client
+
 
 class ActionSearchFlights(Action):
     """Rasa action for searching flights using Amadeus API"""
