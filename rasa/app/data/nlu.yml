@@ -1,4 +1,4 @@
-version: "2.0"
+version: "3.1"
 
 nlu:
   - intent: greet
@@ -19,7 +19,6 @@ nlu:
 
   - intent: goodbye
     examples: |
-      - good afternoon
       - cu
       - good by
       - cee you later
@@ -34,12 +33,10 @@ nlu:
   - intent: affirm
     examples: |
       - yes
-      - y
       - indeed
       - of course
       - that sounds good
       - correct
-      - perfect
       - that's right
       - sounds good
       - that works
@@ -56,23 +53,6 @@ nlu:
       - not interested
       - I'll pass
       - maybe later
-
-  - intent: mood_great
-    examples: |
-      - perfect
-      - great
-      - amazing
-      - feeling like a king
-      - wonderful
-      - I am feeling very good
-      - I am great
-      - I am amazing
-      - I am going to save the world
-      - super stoked
-      - extremely good
-      - so so perfect
-      - so good
-      - so perfect
 
   - intent: mood_unhappy
     examples: |
@@ -221,3 +201,56 @@ nlu:
       - DEL
       - BCN
       - FCO
+  - intent: choose_trip_type
+    examples: |
+      - I want to book a [single](trip_type) trip
+      - I need a [round](trip_type) trip flight
+      - [single](trip_type) trip please
+      - [round](trip_type) trip booking
+      - Looking for a [single](trip_type) flight
+      - Need a [round](trip_type) trip ticket
+      - Book a [round](trip_type) trip flight
+      - I want to fly there and back
+      - Need to book return tickets
+      - Looking for return flight options
+      
+  - intent: single_trip
+    examples: |
+      - single trip
+      - one way
+      - single
+      - just one way
+      - single direction
+      - no return flight
+      - flying one way
+      - one direction only
+      - only going there
+      - just the outbound flight
+
+  - intent: round_trip
+    examples: |
+      - round trip
+      - return flight
+      - two way
+      - round
+      - with return
+      - need to come back
+      - return ticket
+      - flying back
+      - need return flight
+      - going and coming back
+      - both ways
+      - both directions
+      - there and back
+
+  - intent: provide_return_date
+    examples: |
+      - coming back on [2024-05-20](date)
+      - return on [2024-06-15](date)
+      - flying back [2024-07-01](date)
+      - return flight on [2024-08-10](date)
+      - want to return on [2024-09-05](date)
+      - back on [2024-10-12](date)
+      - returning [2024-11-20](date)
+      - my return is [2024-12-25](date)
+      - return journey on [2024-12-31](date)
