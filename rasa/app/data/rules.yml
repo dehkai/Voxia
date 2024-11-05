@@ -1,4 +1,4 @@
-version: "2.0"
+version: "3.1"
 
 rules:
   - rule: Activate flight search form
@@ -7,13 +7,28 @@ rules:
       - action: flight_search_form
       - active_loop: flight_search_form
 
-  - rule: Submit flight search form
+  - rule: Submit flight search form and handle success
     condition:
       - active_loop: flight_search_form
     steps:
       - action: flight_search_form
       - active_loop: null
       - action: action_search_flights
+      - slot_was_set:
+          - flights_found: true
+      - action: action_listen
+
+  - rule: Submit flight search form and handle failure
+    condition:
+      - active_loop: flight_search_form
+    steps:
+      - action: flight_search_form
+      - active_loop: null
+      - action: action_search_flights
+      - slot_was_set:
+          - flights_found: false
+      - action: utter_no_flights_found
+      - action: action_listen
 
   - rule: Activate hotel search form
     steps:
@@ -28,41 +43,8 @@ rules:
       - action: hotel_search_form
       - active_loop: null
       - action: action_search_hotels
+      - action: action_listen
 
-  # - rule: Validate flight search form input
-  #   condition:
-  #     - active_loop: flight_search_form
-  #   steps:
-  #     - action: validate_flight_search_form
-  #     - action: flight_search_form
-
-  # - rule: Validate hotel search form input
-  #   condition:
-  #     - active_loop: hotel_search_form
-  #   steps:
-  #     - action: validate_hotel_search_form
-  #     - action: hotel_search_form
-
-  # - rule: Provide help on demand
-  #   steps:
-  #     - intent: ask_for_help
-  #     - action: utter_help
-
-  # - rule: Handle invalid flight search input
-  #   condition:
-  #     - active_loop: flight_search_form
-  #   steps:
-  #     - action: utter_invalid_flight_input
-  #     - action: flight_search_form
-
-  # - rule: Handle invalid hotel search input
-  #   condition:
-  #     - active_loop: hotel_search_form
-  #   steps:
-  #     - action: utter_invalid_hotel_input
-  #     - action: hotel_search_form
-
-  # Additional rule examples for other simple responses
   - rule: Say goodbye anytime the user says goodbye
     steps:
       - intent: goodbye
@@ -72,3 +54,25 @@ rules:
     steps:
       - intent: bot_challenge
       - action: utter_iamabot
+
+  - rule: Set single trip type
+    steps:
+      - intent: single_trip
+      - action: action_set_trip_type
+      - slot_was_set:
+          - trip_type: "single"
+      - action: action_listen
+
+  - rule: Set round trip type
+    steps:
+      - intent: round_trip
+      - action: action_set_trip_type
+      - slot_was_set:
+          - trip_type: "round"
+      - action: action_listen
+
+  - rule: Handle trip type selection
+    steps:
+      - intent: choose_trip_type
+      - action: utter_ask_trip_type
+      - action: action_listen

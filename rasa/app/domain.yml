@@ -1,22 +1,28 @@
-version: "2.0"
+version: "3.1"
 
 intents:
   - greet
   - goodbye
   - affirm
   - deny
-  - mood_great
   - mood_unhappy
   - bot_challenge
   - search_flights
   - search_hotels
   - provide_travel_dates
   - provide_location
+  - choose_trip_type
+  - single_trip
+  - round_trip
+  - provide_return_date
 
 entities:
   - airport_code
   - city_code
   - date
+  - trip_type
+
+
 
 slots:
   origin:
@@ -39,6 +45,27 @@ slots:
       - type: from_entity
         entity: date
     influence_conversation: true
+
+  return_date:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+
+  trip_type:
+    type: categorical
+    values:
+      - single
+      - round
+    mappings:
+      - type: from_trigger_intent
+        intent: single_trip
+        value: single
+      - type: from_trigger_intent
+        intent: round_trip
+        value: round
+    influence_conversation: true
   
   city:
     type: text
@@ -60,6 +87,12 @@ slots:
       - type: from_entity
         entity: date
     influence_conversation: true
+
+  flights_found:
+    type: bool
+    influence_conversation: true
+    mappings:
+    - type: custom
 
 responses:
   utter_greet:
@@ -111,8 +144,16 @@ responses:
   utter_no_flights_found:
     - text: "Sorry, no flights were found matching your criteria. Please try again with different details."
   
-  # utter_help:
-  #   - text: "How can I assist you today? You can ask me to search for flights or hotels."
+  utter_ask_trip_type:
+    - text: "Would you like to book a single trip or round trip flight?"
+      buttons:
+      - title: "Single Trip"
+        payload: "/single_trip"
+      - title: "Round Trip"
+        payload: "/round_trip"
+
+  utter_ask_return_date:
+    - text: "What's your return date? (Please provide the date in YYYY-MM-DD format)"
 
   utter_slots_values:
     - text: "I have these details from you:\n
@@ -120,17 +161,27 @@ responses:
             To: {destination}\n
             Date: {departure_date}"
 
+  utter_ask_continue:
+    - text: "Would you like to continue with your booking?"
+
 actions:
   - action_search_flights
   - action_search_hotels
   - validate_flight_search_form
+  - choose_trip_type
+  - single_trip
+  - round_trip
+  - provide_return_date
+  - action_set_trip_type
 
 forms:
   flight_search_form:
     required_slots:
+      - trip_type
       - origin
       - destination
       - departure_date
+      - return_date
 
   hotel_search_form:
     required_slots:

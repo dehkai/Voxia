@@ -4,14 +4,51 @@ from rasa_sdk.executor import CollectingDispatcher
 from amadeus import Client, ResponseError
 from datetime import datetime
 import logging
-from .env_loader import setup_credentials  
 from rasa_sdk.forms import FormValidationAction
 from rasa_sdk.types import DomainDict
+from dotenv import load_dotenv
+import os
+from pymongo import MongoClient
+from pymongo.database import Database
+from pymongo.collection import Collection
+from rasa_sdk.events import SlotSet
 
-# Set up logging
+# Load environment variables
+env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
+load_dotenv(dotenv_path=env_path)
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class MongoDBClient:
+    """Singleton class for MongoDB client"""
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            try:
+                # Get MongoDB connection string from environment variables
+                mongodb_uri = os.getenv("MONGODB_ATLAS_URI")
+                db_name = "Voxia"
+                
+                if not mongodb_uri:
+                    logger.error("MongoDB connection string not found in environment variables")
+                    raise ValueError("MongoDB connection string not found in environment variables")
+                
+                # Initialize client
+                cls._instance.client = MongoClient(mongodb_uri)
+                cls._instance.db = cls._instance.client[db_name]
+                logger.info(f"Successfully connected to MongoDB database: {db_name}")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize MongoDB client: {str(e)}")
+                raise
+        return cls._instance
+
+    @property
+    def database(self) -> Database:
+        return self.db
 class AmadeusClient:
     """Singleton class for Amadeus API client"""
     _instance = None
@@ -19,37 +56,72 @@ class AmadeusClient:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # Get credentials from processed credentials file
-            credentials = setup_credentials()  # Keep using existing setup_credentials
-            amadeus_creds = credentials.get('amadeus', {})
-            
-            # Initialize with test environment
-            cls._instance.client = Client(
-                client_id=amadeus_creds['client_id'],
-                client_secret=amadeus_creds['client_secret'],
-                hostname='test'  # Add test environment
-            )
-            logger.info("Initialized Amadeus client in test environment")
+            try:
+                # Get credentials from environment variables
+                client_id = os.getenv("AMADEUS_CLIENT_ID")
+                client_secret = os.getenv("AMADEUS_CLIENT_SECRET")
+                
+                if not client_id or not client_secret:
+                    logger.error("Amadeus credentials not found in environment variables")
+                    raise ValueError("Amadeus credentials not found in environment variables")
+                
+                # Log credential presence (safely)
+                logger.info("Amadeus credentials found:")
+                logger.info(f"client_id length: {len(client_id)}")
+                logger.info(f"client_secret length: {len(client_secret)}")
+                
+                # Initialize client
+                cls._instance.client = Client(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    hostname='test'
+                )
+                logger.info("Successfully initialized Amadeus client")
+            except Exception as e:
+                logger.error(f"Failed to initialize Amadeus client: {str(e)}")
+                raise
         return cls._instance
 
     @property
     def amadeus(self):
         return self.client
 
-class ActionSearchFlights(Action):
-    """Rasa action for searching flights using Amadeus API"""
+class ActionSetTripType(Action):
+    def name(self) -> Text:
+        return "action_set_trip_type"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        # Get the trip type from the intent name
+        if tracker.get_intent_of_latest_message() == "single_trip":
+            trip_type = "single"
+        else:
+            trip_type = "round"
+            
+        return [SlotSet("trip_type", trip_type)]
     
+class ActionSearchFlights(Action):
     def name(self) -> Text:
         return "action_search_flights"
-    
-    def validate_flight_params(self, origin: str, destination: str, departure_date: str) -> bool:
+        
+    def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single") -> bool:
         """Validate flight search parameters"""
         if not all([origin, destination, departure_date]):
             return False
             
         try:
-            datetime.strptime(departure_date, '%Y-%m-%d')
-            return True
+            # Convert to datetime objects and strip time component
+            departure = datetime.strptime(departure_date, '%Y-%m-%d').date()
+            current_date = datetime.now().date()
+            
+            if return_date and trip_type == "round":
+                return_d = datetime.strptime(return_date, '%Y-%m-%d').date()
+                return return_d > departure and departure >= current_date
+            return departure >= current_date
         except ValueError:
             return False
 
@@ -65,7 +137,7 @@ class ActionSearchFlights(Action):
             
             return (
                 f"🛩️ Flight: {segment['carrierCode']} {segment['number']}\n"
-                f"💰 Price: {price} EUR\n"
+                f"💰 Price: MYR {price}\n"
                 f"⏱️ Duration: {itinerary['duration']}\n"
                 f"🛫 Departure: {departure_time}\n"
                 f"🛬 Arrival: {arrival_time}\n"
@@ -75,68 +147,110 @@ class ActionSearchFlights(Action):
             logger.error(f"Error formatting flight details: {str(e)}")
             return "Error formatting flight details"
 
+    async def search_flights(self, amadeus, origin: str, destination: str, date: str) -> List[str]:
+        """Search flights for a given route and format the results"""
+        try:
+            response = amadeus.shopping.flight_offers_search.get(
+                originLocationCode=origin,
+                destinationLocationCode=destination,
+                departureDate=date,
+                adults=1,
+                max=3,
+                currencyCode="MYR"
+            )
+            
+            if response.data:
+                return [self.format_flight_details(offer) for offer in response.data[:3]]
+            return []
+        except Exception as e:
+            logger.error(f"Error searching flights: {str(e)}")
+            return []
+
     async def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
-        
         # Get slots
+        trip_type = tracker.get_slot("trip_type")
         origin = tracker.get_slot("origin")
         destination = tracker.get_slot("destination")
         departure_date = tracker.get_slot("departure_date")
+        return_date = tracker.get_slot("return_date") if trip_type == "round" else None
+        
+        # Log the received values
+        logger.info(f"Received values - Trip Type: {trip_type}, Origin: {origin}, Destination: {destination}, "
+                   f"Departure: {departure_date}, Return: {return_date}")
         
         # Validate parameters
-        if not self.validate_flight_params(origin, destination, departure_date):
+        if not self.validate_flight_params(origin, destination, departure_date, return_date, trip_type):
             dispatcher.utter_message(
-                text="Please provide valid origin, destination, and departure date."
+                text="Please provide valid flight details."
             )
-            return []
+            return [SlotSet("flights_found", False)]
             
         try:
-            logger.info(f"Searching flights: {origin} -> {destination} on {departure_date}")
+            logger.info(f"Searching {trip_type} trip flights: {origin} -> {destination} on {departure_date}")
             
             amadeus = AmadeusClient().amadeus
-            response = amadeus.shopping.flight_offers_search.get(
-                originLocationCode=origin,
-                destinationLocationCode=destination,
-                departureDate=departure_date,
-                adults=1,
-                max=5,  # Limit to top 5 results
-                currencyCode="EUR"
-            )
             
-            if response.data:
-                flight_details = [
-                    self.format_flight_details(offer)
-                    for offer in response.data[:3]
-                ]
+            # Search outbound flights
+            outbound_details = await self.search_flights(amadeus, origin, destination, departure_date)
+            
+            if outbound_details:
+                # For single trip, just show outbound flights
+                if trip_type == "single":
+                    message = f"✈️ Outbound flights from {origin} to {destination}:\n\n"
+                    message += "\n\n".join(outbound_details)
+                    dispatcher.utter_message(text=message)
+                    return [SlotSet("flights_found", True)]
                 
-                dispatcher.utter_message(
-                    text=(
-                        f"✈️ Found {len(response.data)} flights from {origin} to {destination}.\n"
-                        f"Here are the top options:\n\n" +
-                        "\n\n".join(flight_details)
-                    )
-                )
+                # For round trip, search and show both outbound and return flights
+                elif trip_type == "round" and return_date:
+                    # Search return flights
+                    return_details = await self.search_flights(amadeus, destination, origin, return_date)
+                    
+                    if return_details:
+                        # First show outbound options
+                        message = f"✈️ Outbound Options ({departure_date}):\n\n"
+                        message += "\n\n".join(outbound_details)
+                        dispatcher.utter_message(text=message)
+                        
+                        # Then show return options
+                        message = f"\n🔄 Return Options ({return_date}):\n\n"
+                        message += "\n\n".join(return_details)
+                        dispatcher.utter_message(text=message)
+                        
+                        # Display total combinations available
+                        total_combinations = len(outbound_details) * len(return_details)
+                        message = (f"\n📊 Total {total_combinations} combinations available. "
+                                 "Please let me know which outbound and return flights you prefer.")
+                        dispatcher.utter_message(text=message)
+                        return [SlotSet("flights_found", True)]
+                    else:
+                        dispatcher.utter_message(
+                            text=f"Sorry, no return flights found for {return_date}."
+                        )
+                        return [SlotSet("flights_found", False)]
             else:
                 dispatcher.utter_message(
-                    text=f"Sorry, no flights found from {origin} to {destination} on {departure_date}."
+                    text=f"Sorry, no outbound flights found for {departure_date}."
                 )
+                return [SlotSet("flights_found", False)]
                 
         except ResponseError as error:
             logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
             dispatcher.utter_message(
                 text="Sorry, there was an error searching for flights. Please try again later."
             )
+            return [SlotSet("flights_found", False)]
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             dispatcher.utter_message(
                 text="An unexpected error occurred. Please try again later."
             )
-            
-        return []
+            return [SlotSet("flights_found", False)]
 
 class ActionSearchHotels(Action):
     """Rasa action for searching hotels using Amadeus API"""
