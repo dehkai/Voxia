@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -67,44 +67,65 @@ export default function ResetPassword(props) {
   const [isLoading, setIsLoading] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false); // State for the popup
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Extract token from URL parameters
+  const queryParams = new URLSearchParams(location.search);
+  const token = queryParams.get('token');
+
+  useEffect(() => {
+    // Here you can validate the token if necessary
+    console.log('Received token:', token);
+  }, [token]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsLoading(true);
-
+  
     try {
       if (!validateInputs()) {
         setIsLoading(false);
         return;
       }
-
+  
       const formData = new FormData(event.currentTarget);
       const password = formData.get('password');
       const confirmPassword = formData.get('confirmPassword');
-
+  
       if (password !== confirmPassword) {
         setConfirmPasswordError(true);
         setConfirmPasswordErrorMessage('Passwords do not match');
         setIsLoading(false);
         return;
       }
-
-      // Simulate API call for resetting password
-      console.log('Password reset request:', { password });
-
-      // After successful reset, show the popup
-      setPopupOpen(true);
-
-      // Wait for a brief moment before navigating
-      setTimeout(() => {
-        navigate('/signin'); // Navigate back to sign-in page
-      }, 2000);
+  
+      // Send password reset request with token
+      const response = await fetch('http://localhost:5000/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, password }), // Use password here
+      });
+  
+      if (response.ok) {
+        setPopupOpen(true);
+        setTimeout(() => {
+          navigate('/signin'); // Navigate back to sign-in page
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'An error occurred'); // Handle any other errors
+      }
     } catch (error) {
       console.error('Reset password error:', error);
+      setPasswordError(true);
+      setPasswordErrorMessage(error.message); // Set the error message from the response
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const validateInputs = () => {
     const password = document.getElementById('password');
@@ -137,7 +158,7 @@ export default function ResetPassword(props) {
       <CssBaseline enableColorScheme />
       <ResetPasswordContainer direction="column" justifyContent="space-between">
         <Card variant="outlined">
-        <SitemarkIcon />
+          <SitemarkIcon />
           <Typography
             component="h1"
             variant="h4"

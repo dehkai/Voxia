@@ -1,21 +1,19 @@
-// utils/sendEmail.js
 const nodemailer = require('nodemailer');
 require('dotenv').config(); // Load environment variables from .env file
 
 const sendEmail = async (to, subject, text, html) => {
     // Create a transporter
     const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
+        service: 'gmail',  // Use Gmail as the service
         auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+            user: process.env.SMTP_USER,  // Your Gmail address (e.g., 'youremail@gmail.com')
+            pass: process.env.SMTP_PASS,  // Your Gmail App Password
         },
     });
 
     // Define email options
     const mailOptions = {
-        from: process.env.FROM_EMAIL,
+        from: process.env.FROM_EMAIL,  // Your email address (should match SMTP_USER)
         to,
         subject,
         text,

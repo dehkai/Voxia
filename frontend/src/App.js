@@ -9,7 +9,7 @@ import SignIn from "./pages/SignIn";
 import AdminDashboard from "./pages/Admin_Dashboard";
 import EmployeeDashboard from "./pages/Employee_Dashboard";
 import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";  // Import the ResetPassword component
+import ResetPassword from "./pages/ResetPassword"; // Import the ResetPassword component
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
 
 function App() {
@@ -29,7 +29,23 @@ function App() {
     <AuthContext.Provider value={auth}>
       <Router>
         <Routes>
-          <Route path="/" element={<Navigate to={!auth.isLoggedIn ? "/signin" : auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />} />
+          {/* Default redirect based on login status and role */}
+          <Route
+            path="/"
+            element={
+              <Navigate
+                to={
+                  !auth.isLoggedIn
+                    ? "/signin"
+                    : auth.user?.role === "admin"
+                    ? "/admin_dashboard"
+                    : "/employee_dashboard"
+                }
+              />
+            }
+          />
+
+          {/* Admin Dashboard Route */}
           <Route
             path="/admin_dashboard"
             element={
@@ -40,6 +56,8 @@ function App() {
               )
             }
           />
+
+          {/* Employee Dashboard Route */}
           <Route
             path="/employee_dashboard"
             element={
@@ -50,23 +68,33 @@ function App() {
               )
             }
           />
+
+          {/* Sign In Route */}
           <Route
             path="/signin"
             element={
               !auth.isLoggedIn ? (
                 <SignIn />
               ) : (
-                <Navigate to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />
+                <Navigate
+                  to={
+                    auth.user?.role === "admin"
+                      ? "/admin_dashboard"
+                      : "/employee_dashboard"
+                  }
+                />
               )
             }
           />
-          <Route 
-            path="/forgot-password" 
-            element={<ForgotPassword />}  // Forgot Password Route
-          />
-          <Route 
-            path="/reset-password" 
-            element={<ResetPassword />}  // Reset Password Route
+
+          {/* Forgot Password Route */}
+          <Route path="/forgot-password" 
+          element={<ForgotPassword />} />
+
+          {/* Reset Password Route - with token handling */}
+          <Route
+            path="/reset-password"
+            element={<ResetPassword />} // Make sure the component handles the token
           />
         </Routes>
       </Router>

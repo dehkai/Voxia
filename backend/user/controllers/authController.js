@@ -37,7 +37,7 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { token, newPassword } = req.body;
+        const { token, password } = req.body; // Using password instead of newPassword
 
         // Step 1: Find the user by the reset token and check expiration
         const user = await User.findOne({
@@ -49,21 +49,28 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or expired token.' });
         }
 
-        // Step 2: Hash the new password before saving it
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
+        // Step 2: Check if the new password is the same as the old password
+        const isOldPassword = await bcrypt.compare(password, user.password);
+        if (isOldPassword) {
+            return res.status(400).json({ message: 'New password cannot be the same as the old password.' });
+        }
+
+        // Step 3: Save the password
+        user.password = password; // 
+
+        // Clear the reset token and expiration after successful password reset
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();
 
         res.status(200).json({ message: 'Password has been reset successfully.' });
     } catch (error) {
-        console.error('Error resetting password:', error);
+        console.error('Error resetting password:', error);  // Log the error for debugging
         res.status(500).json({ message: 'Error resetting password, please try again.' });
     }
 };
 
 module.exports = {
     forgotPassword,
-    resetPassword // Make sure to export this
+    resetPassword
 };

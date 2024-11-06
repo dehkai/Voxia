@@ -47,9 +47,8 @@ const userSchema = new mongoose.Schema({
     resetPasswordToken: { 
       type: String 
     },
-    resetPasswordExpires: 
-    { type: Date 
-      
+    resetPasswordExpires: { 
+      type: Date 
     },
   });
 
@@ -61,3 +60,4 @@ userSchema.pre('save', async function (next) {
 });
 
 module.exports = mongoose.model('User', userSchema);
+
