@@ -8,6 +8,7 @@ import {
 import SignIn from "./pages/SignIn";
 import AdminDashboard from "./pages/Admin_Dashboard";
 import EmployeeDashboard from "./pages/Employee_Dashboard";
+import UserProfile from "./pages/User_Profile";
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
 
 function App() {
@@ -58,6 +59,7 @@ function App() {
               )
             }
           />
+          <Route path= "/user_profile" element={<UserProfile />} />
         </Routes>
       </Router>
     </AuthContext.Provider>
