@@ -1,15 +1,14 @@
-// routes.js
 const express = require('express');
-const { register, login } = require('./controllers/userController');
-const authMiddleware = require('../../middlewares/authMiddleware');
 const router = express.Router();
+const userController = require('./controllers/userController');
+const authMiddleware = require('../../middlewares/authMiddleware');
 
-router.post('/register', register);
-router.post('/login', login);
-
-
+router.post('/login', userController.login); 
+router.post('/register', userController.register);
 router.get('/profile', authMiddleware, (req, res) => {
-  res.status(200).json({ message: 'Profile data', user: req.user });
+    res.status(200).json({ message: 'Profile data', user: req.user });
 });
 
-module.exports = router;
+module.exports = {
+    userRoutes: router
+};
