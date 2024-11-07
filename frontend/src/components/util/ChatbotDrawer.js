@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Box, Drawer, List, ListItem, ListItemText, TextField, Button, Avatar, IconButton, Typography, Divider } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { fetchChatbotResponse } from "../../mutations/chatBot/useChatbotInteraction";
+import botAvatar from "../../assets/images/robot.jpg";
+import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
+import CloseTwoToneIcon from "@mui/icons-material/CloseTwoTone";
 
 const ChatbotDrawer = ({ open, onClose }) => {
     const [messages, setMessages] = useState([{ text: "Hello! How can I help you?", isBot: true, timestamp: new Date() }]);
@@ -8,7 +12,28 @@ const ChatbotDrawer = ({ open, onClose }) => {
     const [rows, setRows] = useState(1);
     const messagesEndRef = useRef(null);
 
-    const handleSendMessage = () => {
+    // const handleSendMessage = () => {
+    //     if (input.trim() === "") return;
+
+    //     const userMessage = { text: input, isBot: false, timestamp: new Date() };
+    //     setMessages((prevMessages) => [...prevMessages, userMessage]);
+    //     setInput("");
+    //     setRows(1);
+
+    //     setTimeout(() => {
+    //         const botMessage = { text: `You said:\n${input}`, isBot: true, timestamp: new Date() };
+    //         setMessages((prevMessages) => [...prevMessages, botMessage]);
+    //     }, 500);
+    // };
+
+    const handleExitChat = () => {
+        // Close the drawer or reset the chat state
+        onClose(); // Assuming onClose will handle closing the drawer
+        // setMessages([]); // Optional: clear the chat history
+        // setInput(""); // Optional: clear the input field
+    };
+
+    const handleSendMessage = async () => {
         if (input.trim() === "") return;
 
         const userMessage = { text: input, isBot: false, timestamp: new Date() };
@@ -16,10 +41,19 @@ const ChatbotDrawer = ({ open, onClose }) => {
         setInput("");
         setRows(1);
 
-        setTimeout(() => {
-            const botMessage = { text: `You said:\n${input}`, isBot: true, timestamp: new Date() };
-            setMessages((prevMessages) => [...prevMessages, botMessage]);
-        }, 500);
+        try {
+            const botResponses = await fetchChatbotResponse(input); // Call function directly
+            botResponses.forEach((response) => {
+                const botMessage = {
+                    text: response.text,
+                    isBot: true,
+                    timestamp: new Date(),
+                };
+                setMessages((prevMessages) => [...prevMessages, botMessage]);
+            });
+        } catch (error) {
+            console.error("Error in Rasa interaction:", error);
+        }
     };
 
     useEffect(() => {
@@ -54,9 +88,28 @@ const ChatbotDrawer = ({ open, onClose }) => {
                 }}
             >
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h2>Chatbot</h2>
-                    <IconButton onClick={() => console.log("Settings Clicked")}>
-                        <SettingsIcon />
+                    <Avatar sx={{ ml: 3, width: 50, height: 50, fontSize: "20px" }} src={botAvatar}>
+                        B
+                    </Avatar>
+                    <h2>Voxia</h2>
+                    <IconButton
+                        sx={{
+                            ml: 45,
+                            border: "none", // Hides any border
+                            outline: "none",
+                        }}
+                        onClick={() => console.log("Settings Clicked")}
+                    >
+                        <ScatterPlotOutlinedIcon />
+                    </IconButton>
+                    <IconButton
+                        sx={{
+                            border: "none", // Hides any border
+                            outline: "none",
+                        }}
+                        onClick={handleExitChat}
+                    >
+                        <CloseTwoToneIcon />
                     </IconButton>
                 </Box>
                 <List sx={{ flexGrow: 1, overflowY: "auto" }}>
@@ -89,7 +142,9 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                 <ListItem key={index} sx={{ justifyContent: msg.isBot ? "flex-start" : "flex-end" }}>
                                     {msg.isBot ? (
                                         <>
-                                            <Avatar sx={{ mr: 1 }}>B</Avatar>
+                                            <Avatar sx={{ mr: 1, width: 50, height: 50, fontSize: "20px" }} src={botAvatar}>
+                                                B
+                                            </Avatar>
                                             <ListItemText
                                                 primary={
                                                     <Typography component="span" sx={{ whiteSpace: "pre-wrap" }}>
@@ -159,7 +214,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
                         onChange={(e) => {
                             const value = e.target.value;
                             setInput(value);
-                            setRows(value.split("\n").length);
+                            setRows(value.split("\n").length); // Update rows based on newline count
                         }}
                         onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
@@ -168,8 +223,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
                             }
                         }}
                         multiline
-                        rows={rows}
-                        maxRows={4}
+                        rows={rows} // Only use rows, remove maxRows
                     />
                     <Button onClick={handleSendMessage} sx={{ ml: 1 }} variant="contained">
                         Send
