@@ -262,8 +262,8 @@ export default function SignIn(props) {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* <Divider>or</Divider> */}
+          {/* <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Button
               fullWidth
               variant="outlined"
@@ -280,7 +280,7 @@ export default function SignIn(props) {
             >
               Sign in with Facebook
             </Button>
-          </Box>
+          </Box> */}
         </Card>
         <Widget
   initPayload={"/get_started"}
