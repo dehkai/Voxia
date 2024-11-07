@@ -41,7 +41,7 @@ const OptionsMenu = React.memo(() => {
   }, [logout, handleClose, navigate]);
 
   const handleProfile = React.useCallback(() => {
-    navigate('/user_profile');  // Navigate to the profile page
+    navigate('/user_profile'); 
     handleClose();
   }, [navigate, handleClose]);
 

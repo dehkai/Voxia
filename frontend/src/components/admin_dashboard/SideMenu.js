@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import MenuContent from './MenuContent';
 //import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
+import AppTheme from '../../shared-theme/AppTheme';
 
 const drawerWidth = 240;
 
@@ -26,6 +27,7 @@ const Drawer = styled(MuiDrawer)({
 
 export default function SideMenu() {
   return (
+    <AppTheme>
     <Drawer
       variant="permanent"
       sx={{
@@ -74,5 +76,6 @@ export default function SideMenu() {
         <OptionsMenu />
       </Stack>
     </Drawer>
+    </AppTheme>
   );
 }

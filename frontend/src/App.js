@@ -10,6 +10,8 @@ import AdminDashboard from "./pages/Admin_Dashboard";
 import EmployeeDashboard from "./pages/Employee_Dashboard";
 import UserProfile from "./pages/User_Profile";
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
+import AdminLayout from "./layout/AdminLayout"; // Import Admin Layout
+import EmployeeLayout from "./layout/EmployeeLayout"; // Import Employee Layout
 
 function App() {
   const [authState, setAuthState] = useState(isAuthenticated());
@@ -29,37 +31,41 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Navigate to={!auth.isLoggedIn ? "/signin" : auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />} />
-          <Route
-            path="/admin_dashboard"
-            element={
-              auth.isLoggedIn && auth.user?.role === "admin" ? (
-                <AdminDashboard />
-              ) : (
-                <Navigate to="/signin" />
-              )
-            }
-          />
-          <Route
-            path="/employee_dashboard"
-            element={
-              auth.isLoggedIn && auth.user?.role === "employee" ? (
-                <EmployeeDashboard />
-              ) : (
-                <Navigate to="/signin" />
-              )
-            }
-          />
-          <Route
-            path="/signin"
-            element={
-              !auth.isLoggedIn ? (
-                <SignIn />
-              ) : (
-                <Navigate to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />
-              )
-            }
-          />
-          <Route path= "/user_profile" element={<UserProfile />} />
+
+          {/* Root layout for all other routes */}
+          <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>
+            <Route
+              path="admin_dashboard"
+              element={
+                auth.isLoggedIn && auth.user?.role === "admin" ? (
+                  <AdminDashboard />
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+            <Route
+              path="employee_dashboard"
+              element={
+                auth.isLoggedIn && auth.user?.role === "employee" ? (
+                  <EmployeeDashboard />
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+            <Route
+              path="signin"
+              element={
+                !auth.isLoggedIn ? (
+                  <SignIn />
+                ) : (
+                  <Navigate to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />
+                )
+              }
+            />
+            <Route path="user_profile" element={<UserProfile />} />
+          </Route>
         </Routes>
       </Router>
     </AuthContext.Provider>

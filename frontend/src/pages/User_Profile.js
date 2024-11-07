@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Container, Grid, Card, CardContent, Typography, Avatar, TextField, Button, MenuItem } from '@mui/material';
+import AppTheme from '../shared-theme/AppTheme';
 
-// Sample data for avatar and user info
 const user = {
     name: 'Sofia Rivers',
     location: 'Los Angeles USA',
@@ -11,7 +11,9 @@ const user = {
 
 function Account() {
     return (
+        
         <Container maxWidth="md">
+            <AppTheme>
             <Typography variant="h4" sx={{ mb: 4 }}>
                 Account
             </Typography>
@@ -107,6 +109,7 @@ function Account() {
                     </Card>
                 </Grid>
             </Grid>
+            </AppTheme>
         </Container>
     );
 }
