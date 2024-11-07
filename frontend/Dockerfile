@@ -3,7 +3,11 @@ FROM node:14.0.0
 # Create app directory
 WORKDIR /usr/src/app
 COPY package*.json ./
-# Bundle app source
+
+# Install dependencies
+RUN npm install --legacy-peer-deps
+
+# Copy the rest of your application
 COPY . .
 RUN npm install
 EXPOSE 3000

@@ -6,21 +6,15 @@ services:
     ports:
       - 8800:8800 
     volumes:
-      - ./node/backend:/usr/src/app
-      - /usr/src/app/node_modules
-    environment:
-      - PORT=8800
-    depends_on:
-      - mongo
-  
-  mongo:
-    image: mongo:3.6
-    volumes:
-      - mongo-storage:/data/db
-    expose:
-      - 27017
-    ports:
-      - 27017:27017
+      - ./backend:/app
+    command: npx nodemon index.js  # Use nodemon for auto-reloading in development
+    restart: always
+    env_file:
+      - ./backend/.env
+    networks:
+      - Voxia
+    profiles:
+      - dev
 
   frontend:
     container_name: frontend
@@ -41,12 +35,68 @@ services:
     ports:
       - "5005:5005"
     volumes:
+      - ./frontend:/app
+    restart: always
+    networks:
+      - Voxia
+    profiles:
+      - dev
+
+  backend_prod:
+    image: ${BACKEND_IMAGE_PROD}
+    container_name: backend_prod
+    ports:
+      - '5000:5000'
+    env_file:
+      - ./.env
+    networks:
+      - Voxia
+
+  frontend_prod:
+    image: ${FRONTEND_IMAGE_PROD}
+    container_name: frontend_prod
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend_prod
+    env_file:
+      - ./.env
+    networks:
+      - Voxia
+    profiles:
+      - prod
+
+  rasa:
+    image: rasa/rasa:2.0.4-full
+    user: "1000:1000"
+    ports:
+      - "5005:5005"
+    volumes:
       - "./rasa/app/:/app/"
     command:
       - run
       - --endpoints 
       - endpoints.yml
       - --debug
+    networks:
+      - Voxia
+
+  action_server:
+    image: rasa/rasa-sdk:2.0.0
+    user: "1000:1000"
+    ports:
+      - "5055:5055"
+    volumes:
+    networks:
+      - Voxia
+
+  duckling:
+    image: rasa/duckling:latest
+    user: "1000:1000"
+    ports:
+      - "8000:8000"
+    networks:
+      - Voxia
 
   action_server:
     image: rasa/rasa-sdk:2.0.0

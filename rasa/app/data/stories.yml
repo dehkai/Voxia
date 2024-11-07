@@ -1,30 +1,135 @@
-version: "2.0"
+version: "3.1"
 
 stories:
+  - story: happy greeting path
+    steps:
+    - intent: greet
+    - action: utter_greet
+    - action: utter_affirm
 
-- story: happy path
-  steps:
-  - intent: greet
-  - action: utter_greet
-  - intent: mood_great
-  - action: utter_happy
+  - story: happy mood path
+    steps:
+    - intent: mood_unhappy
+    - action: utter_cheer_up
+    - action: utter_did_that_help
+    - intent: affirm
+    - action: utter_happy
 
-- story: sad path 1
-  steps:
-  - intent: greet
-  - action: utter_greet
-  - intent: mood_unhappy
-  - action: utter_cheer_up
-  - action: utter_did_that_help
-  - intent: affirm
-  - action: utter_happy
+  - story: unhappy mood path
+    steps:
+    - intent: mood_unhappy
+    - action: utter_cheer_up
+    - action: utter_did_that_help
+    - intent: deny
+    - action: utter_goodbye
 
-- story: sad path 2
-  steps:
-  - intent: greet
-  - action: utter_greet
-  - intent: mood_unhappy
-  - action: utter_cheer_up
-  - action: utter_did_that_help
-  - intent: deny
-  - action: utter_goodbye
+  - story: successful single trip flight booking
+    steps:
+    - intent: search_flights
+    - action: flight_search_form
+    - active_loop: flight_search_form
+    - intent: single_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "single"
+    - intent: provide_location
+      entities:
+        - airport_code: "KUL"
+    - slot_was_set:
+        - origin: "KUL"
+    - intent: provide_location
+      entities:
+        - airport_code: "SIN"
+    - slot_was_set:
+        - destination: "SIN"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-15"
+    - slot_was_set:
+        - departure_date: "2024-05-15"
+    - action: flight_search_form
+    - active_loop: null
+    - action: action_search_flights
+    - action: action_listen
+
+  - story: successful round trip flight booking
+    steps:
+    - intent: search_flights
+    - action: flight_search_form
+    - active_loop: flight_search_form
+    - intent: round_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "round"
+    - intent: provide_location
+      entities:
+        - airport_code: "KUL"
+    - slot_was_set:
+        - origin: "KUL"
+    - intent: provide_location
+      entities:
+        - airport_code: "SIN"
+    - slot_was_set:
+        - destination: "SIN"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-15"
+    - slot_was_set:
+        - departure_date: "2024-05-15"
+    - intent: provide_return_date
+      entities:
+        - date: "2024-05-20"
+    - slot_was_set:
+        - return_date: "2024-05-20"
+    - action: flight_search_form
+    - active_loop: null
+    - action: action_search_flights
+    - action: action_listen
+
+  - story: no flights found
+    steps:
+    - intent: search_flights
+    - action: flight_search_form
+    - active_loop: flight_search_form
+    - intent: single_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "single"
+    - intent: provide_location
+      entities:
+        - airport_code: "KUL"
+    - slot_was_set:
+        - origin: "KUL"
+    - intent: provide_location
+      entities:
+        - airport_code: "SIN"
+    - slot_was_set:
+        - destination: "SIN"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-15"
+    - slot_was_set:
+        - departure_date: "2024-05-15"
+    - action: flight_search_form
+    - active_loop: null
+    - action: action_search_flights
+    - slot_was_set:
+        - flights_found: false
+    - action: utter_no_flights_found
+    - action: action_listen
+
+  - story: change trip type during booking
+    steps:
+    - intent: search_flights
+    - action: flight_search_form
+    - active_loop: flight_search_form
+    - intent: single_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "single"
+    - intent: round_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "round"
+    - action: flight_search_form
+    - active_loop: flight_search_form

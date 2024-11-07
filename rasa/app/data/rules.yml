@@ -1,13 +1,78 @@
-version: "2.0"
+version: "3.1"
 
 rules:
+  - rule: Activate flight search form
+    steps:
+      - intent: search_flights
+      - action: flight_search_form
+      - active_loop: flight_search_form
 
-- rule: Say goodbye anytime the user says goodbye
-  steps:
-  - intent: goodbye
-  - action: utter_goodbye
+  - rule: Submit flight search form and handle success
+    condition:
+      - active_loop: flight_search_form
+    steps:
+      - action: flight_search_form
+      - active_loop: null
+      - action: action_search_flights
+      - slot_was_set:
+          - flights_found: true
+      - action: action_listen
 
-- rule: Say 'I am a bot' anytime the user challenges
-  steps:
-  - intent: bot_challenge
-  - action: utter_iamabot
+  - rule: Submit flight search form and handle failure
+    condition:
+      - active_loop: flight_search_form
+    steps:
+      - action: flight_search_form
+      - active_loop: null
+      - action: action_search_flights
+      - slot_was_set:
+          - flights_found: false
+      - action: utter_no_flights_found
+      - action: action_listen
+
+  - rule: Activate hotel search form
+    steps:
+      - intent: search_hotels
+      - action: hotel_search_form
+      - active_loop: hotel_search_form
+
+  - rule: Submit hotel search form
+    condition:
+      - active_loop: hotel_search_form
+    steps:
+      - action: hotel_search_form
+      - active_loop: null
+      - action: action_search_hotels
+      - action: action_listen
+
+  - rule: Say goodbye anytime the user says goodbye
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+
+  - rule: Say 'I am a bot' anytime the user challenges
+    steps:
+      - intent: bot_challenge
+      - action: utter_iamabot
+
+  - rule: Set single trip type
+    steps:
+      - intent: single_trip
+      - action: action_set_trip_type
+      - slot_was_set:
+          - trip_type: "single"
+      - action: action_listen
+
+  - rule: Set round trip type
+    steps:
+      - intent: round_trip
+      - action: action_set_trip_type
+      - slot_was_set:
+          - trip_type: "round"
+      - action: action_listen
+
+  - rule: Handle trip type selection
+    steps:
+      - intent: choose_trip_type
+      - action: utter_ask_trip_type
+      - action: action_listen
