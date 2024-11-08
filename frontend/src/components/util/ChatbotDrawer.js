@@ -17,6 +17,7 @@ import { fetchChatbotResponse } from "../../mutations/chatBot/useChatbotInteract
 import botAvatar from "../../assets/images/robot.jpg";
 import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
 import CloseTwoToneIcon from "@mui/icons-material/CloseTwoTone";
+import AppTheme from "../../shared-theme/AppTheme";
 
 const ChatbotDrawer = ({ open, onClose }) => {
   const [messages, setMessages] = useState([
@@ -91,6 +92,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
   };
 
   return (
+    <AppTheme>
     <Drawer anchor="right" open={open} onClose={onClose}>
       <Box
         sx={{
@@ -269,6 +271,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
         </Box>
       </Box>
     </Drawer>
+    </AppTheme>
   );
 };
 
