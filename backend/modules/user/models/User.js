@@ -26,6 +26,16 @@ const userSchema = new mongoose.Schema({
     token: {
         type: String, // Add a token field
     },
+    gender: {
+      type: String,
+      enum: ['male', 'female'],
+      default: 'male',
+    },
+    jobTitle: {
+      type: String,
+      enum: ['Sales Executive', 'PR Specialist', 'Executive Assistant', 'Marketing Specialist', 'HR Manager', 'IT Specialist', 'Customer Service Specialist'],
+      default: 'Sales Executive',
+    },
     preferences: {
         cabinClass: {
             type: String,

@@ -40,8 +40,13 @@ const OptionsMenu = React.memo(() => {
     navigate('/signin');
   }, [logout, handleClose, navigate]);
 
+  const handleProfile = React.useCallback(() => {
+    navigate('/user_profile'); 
+    handleClose();
+  }, [navigate, handleClose]);
+
   const menuItems = React.useMemo(() => [
-    { label: 'Profile', onClick: handleClose },
+    { label: 'Profile', onClick: handleProfile },
     { label: 'My account', onClick: handleClose },
     { type: 'divider' },
     { label: 'Add another account', onClick: handleClose },
