@@ -99,7 +99,39 @@ const login = async (req, res) => {
     }
 };
 
+const updateUserDetails = async (req, res) => {
+    try {
+        const userId = req.user.userId;  
+        const updatedData = req.body;    
+
+        // Find the user and update the details
+        const user = await User.findByIdAndUpdate(userId, updatedData, { new: true });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            message: 'User details updated successfully',
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                gender: user.gender,
+                jobTitle: user.jobTitle,
+                preferences: user.preferences,
+                updatedAt: user.updatedAt
+            }
+        });
+    } catch (error) {
+        console.error('Error updating user details:', error);
+        res.status(500).json({ message: 'Error updating user details', error: error.message });
+    }
+};
+
 module.exports = {
     register,
-    login
+    login,
+    updateUserDetails
 };

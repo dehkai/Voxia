@@ -18,6 +18,8 @@ router.get('/profile', authMiddleware, async (req, res) => {
                 role: user.role,
                 email: user.email,
                 username: user.username,
+                gender: user.gender,
+                jobTitle: user.jobTitle,
                 preferences: user.preferences,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt
@@ -27,6 +29,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+router.put('/update-profile', authMiddleware, userController.updateUserDetails);
 
 module.exports = {
     userRoutes: router
