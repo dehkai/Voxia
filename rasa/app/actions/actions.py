@@ -12,6 +12,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
 from rasa_sdk.events import SlotSet
+import requests
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -400,3 +401,104 @@ class ValidateFlightSearchForm(FormValidationAction):
         except ValueError:
             dispatcher.utter_message(text="Please provide a valid date in YYYY-MM-DD format.")
             return {"departure_date": None}
+        
+    
+class ActionGeneratePDF(Action):
+    def name(self) -> str:
+        return "action_generate_pdf"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
+        token = tracker.get_slot("auth_token")
+        # Define the URL for the backend PDF generation endpoint
+        backend_url = "http://localhost:5000/api/chatbot/chatbots/generate-pdf"
+        
+        # Sample data to send to the PDF generation API
+        data = {
+            "text": "This is a sample text to include in the PDF."
+        }
+
+        # Make a request to the backend to generate the PDF
+        try:
+            response = requests.post(backend_url, json=data)
+            response.raise_for_status()
+
+            # Construct download link
+            download_link = f"{backend_url}/download"
+            dispatcher.utter_message(text="Your PDF has been generated! Click the link to download: " + download_link)
+
+        except requests.exceptions.RequestException as e:
+            dispatcher.utter_message(text="Sorry, an error occurred while generating the PDF.")
+            print(f"Error generating PDF: {e}")
+
+        return []
+    
+# class ActionFetchAuthToken(Action):
+#     def name(self) -> str:
+#         return "action_fetch_auth_token"
+
+#     async def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict) -> List[Dict[Text, Any]]:
+#         email = tracker.get_slot("email")
+
+#         if not email:
+#             dispatcher.utter_message(text="Please provide a valid email to fetch your token.")
+#             return []
+
+#         try:
+#             # Assume `fetch_token_from_api` is a function that fetches the token
+#             token = await fetch_token_from_api(email)
+#             if token:
+#                 dispatcher.utter_message(text="Your authentication token has been successfully fetched and stored.")
+#             else:
+#                 dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+        
+#         except Exception as e:
+#             dispatcher.utter_message(text="An error occurred while fetching your token.")
+#             print(f"Error fetching token: {e}")
+
+#         return []
+class ActionFetchAuthToken(Action):
+    def name(self) -> str:
+        return "action_fetch_auth_token"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker, domain):
+        # Extract the provided email entity from user input
+        email = next(tracker.get_latest_entity_values("email"), None)
+        
+        # Ensure email slot is set
+        if email:
+            # Call your backend API to get the token
+            url = "http://localhost:5000/api/auth/fetch-token"
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(url, json={"email": email}, headers=headers)
+
+            if response.status_code == 200:
+                token = response.json().get("token")
+                if token:
+                    dispatcher.utter_message(text=f"Token fetched successfully: {token}")
+                    return [SlotSet("auth_token", token), SlotSet("user_email", email)]
+                else:
+                    dispatcher.utter_message(text="Sorry, we couldn't retrieve your token.")
+                    return []
+            else:
+                dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+                return []
+        else:
+            dispatcher.utter_message(text="Please provide a valid email address.")
+            return []
+    
+class ActionCheckTokenStatus(Action):
+    def name(self) -> str:
+        return "action_check_token_status"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
+        # Retrieve token from the 'auth_token' slot
+        token = tracker.get_slot("auth_token")
+
+        if token:
+            # Send token status if it exists
+            dispatcher.utter_message(text=f"Your authentication token is: {token}")
+        else:
+            # Send a message if no token is available
+            dispatcher.utter_message(text="No authentication token is available.")
+        
+        return []

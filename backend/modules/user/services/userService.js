@@ -13,4 +13,21 @@ const verifyToken = (token) => {
   return jwt.verify(token, SECRET_KEY);
 };
 
-module.exports = { generateToken, verifyToken };
+const getUserTokenByEmail = async (email) => {
+  try {
+      const user = await User.findOne({ email });
+      if (!user) {
+          throw new Error('User not found');
+      }
+      return user.token; // Return the stored token
+  } catch (error) {
+      throw new Error(`Error fetching user token: ${error.message}`);
+  }
+};
+
+module.exports = { 
+  generateToken, 
+  verifyToken,
+  getUserTokenByEmail
+
+};

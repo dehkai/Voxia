@@ -15,23 +15,26 @@ intents:
   - single_trip
   - round_trip
   - provide_return_date
+  - request_pdf
+  - provide_email
+  - check_token_status
 
 entities:
   - airport_code
   - city_code
   - date
   - trip_type
-
-
+  - email
 
 slots:
+
   origin:
     type: text
     mappings:
       - type: from_entity
         entity: airport_code
     influence_conversation: true
-  
+
   destination:
     type: text
     mappings:
@@ -93,8 +96,32 @@ slots:
     influence_conversation: true
     mappings:
     - type: custom
+  
+  api_token:
+    type: text
+    mappings:
+      - type: from_text  # Adding an empty mapping to avoid the error
+
+  user_email:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: email
+
+  auth_token:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
 
 responses:
+
+  utter_no_token: 
+    - text: "No token has been fetched yet."
+  utter_token_status:
+    - text: "Your authentication token is: {token}"
+
   utter_greet:
     - text: "Hey! How can I help you with your travel plans today?"
 
@@ -163,6 +190,11 @@ responses:
 
   utter_ask_continue:
     - text: "Would you like to continue with your booking?"
+  
+  utter_ask_for_email:
+    - text: "Please provide your email to fetch the authentication token."
+  utter_token_received:
+    - text: "Your authentication token has been successfully fetched and stored."
 
 actions:
   - action_search_flights
@@ -173,6 +205,9 @@ actions:
   - round_trip
   - provide_return_date
   - action_set_trip_type
+  - action_generate_pdf
+  - action_fetch_auth_token
+  - action_check_token_status
 
 forms:
   flight_search_form:

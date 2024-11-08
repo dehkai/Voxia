@@ -3,6 +3,8 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const { getUserTokenByEmail } = require('../services/userService');
+
 
 const register = async (req, res) => {
     try {
@@ -78,6 +80,9 @@ const login = async (req, res) => {
             { expiresIn: '1h' }
         );
 
+        user.token = token; // Update the user's token field
+        await user.save();
+
         console.log('Login successful for user:', email);
 
         res.status(200).json({
@@ -99,7 +104,25 @@ const login = async (req, res) => {
     }
 };
 
+const getToken = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Fetch the token from the service
+        const token = await getUserTokenByEmail(email);
+
+        res.status(200).json({
+            message: 'Token fetched successfully',
+            token
+        });
+    } catch (error) {
+        console.error('Error fetching token:', error);
+        res.status(500).json({ message: `Error fetching token: ${error.message}` });
+    }
+};
+
 module.exports = {
     register,
-    login
+    login,
+    getToken
 };
