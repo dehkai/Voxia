@@ -28,19 +28,19 @@ const userSchema = new mongoose.Schema({
     },
     gender: {
       type: String,
-      enum: ['male', 'female'],
-      default: 'male',
+      enum: ['Male', 'Female'],
+      default: 'Male',
     },
     jobTitle: {
       type: String,
-      enum: ['Sales Executive', 'PR Specialist', 'Executive Assistant', 'Marketing Specialist', 'HR Manager', 'IT Specialist', 'Customer Service Specialist'],
+      enum: ['Sales Executive', 'PR Specialist', 'Executive Assistant', 'Marketing Specialist', 'HR Manager', 'IT Specialist', 'Customer Service Specialist','Marketing Lead','Admin'],
       default: 'Sales Executive',
     },
     preferences: {
         cabinClass: {
             type: String,
-            enum: ["economy", "business", "first"],
-            default: "economy",
+            enum: ['Economy', 'Business', 'First Class'],
+            default: "Economy",
         },
         hotelRating: {
             type: Number,
