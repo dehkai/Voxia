@@ -19,7 +19,6 @@ import AppTheme from '../shared-theme/AppTheme';
 import ColorModeSelect from '../shared-theme/ColorModeSelect';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../utils/auth';
-import Widget from 'rasa-webchat';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -234,7 +233,6 @@ export default function SignIn(props) {
                 type="password"
                 id="password"
                 autoComplete="current-password"
-                autoFocus
                 required
                 fullWidth
                 variant="outlined"
@@ -262,8 +260,8 @@ export default function SignIn(props) {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </Box>
-          <Divider>or</Divider>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* <Divider>or</Divider> */}
+          {/* <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Button
               fullWidth
               variant="outlined"
@@ -280,26 +278,8 @@ export default function SignIn(props) {
             >
               Sign in with Facebook
             </Button>
-          </Box>
+          </Box> */}
         </Card>
-        <Widget
-  initPayload={"/get_started"}
-  socketUrl={"http://0.0.0.0:5005"}
-  socketPath={"/socket.io/"}
-  customData={{ "language": "en" }}
-  title={"Oncology Assistant"}
-  subtitle={"Need help? Chat with our assistant"}
-  showCloseButton={true}
-  embedded={true}
-  style={{
-    width: '400px', // Adjust width as necessary
-    position: 'fixed',
-    bottom: '20px', // Fixed position from the bottom
-    right: '20px',  // Fixed position from the right
-    zIndex: 1000,   // Make sure it's on top of other elements
-    backgroundColor: 'white', // Optional: add background for visibility
-  }}
-/>
       </SignInContainer>
       
     </AppTheme>

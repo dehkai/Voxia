@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
+const chatbotSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
@@ -20,27 +20,14 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ["admin", "employee", "supervisor"],
-        default: "employee",
-    },
-    token: {
-        type: String, // Add a token field
-    },
-    gender: {
-      type: String,
-    //   enum: ['Male', 'Female'],
-      default: 'Male',
-    },
-    jobTitle: {
-      type: String,
-    //   enum: ['Sales Executive', 'PR Specialist', 'Executive Assistant', 'Marketing Specialist', 'HR Manager', 'IT Specialist', 'Customer Service Specialist','Marketing Lead','Admin'],
-      default: 'Sales Executive',
+        enum: ['admin', 'employee', 'supervisor'],
+        default: 'employee',
     },
     preferences: {
         cabinClass: {
             type: String,
-            // enum: ['Economy', 'Business', 'First Class'],
-            default: "Economy",
+            enum: ['economy', 'business', 'first'],
+            default: 'economy',
         },
         hotelRating: {
             type: Number,
@@ -59,11 +46,11 @@ const userSchema = new mongoose.Schema({
     },
 });
 
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
+chatbotSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 10);
     this.updatedAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
     next();
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('Chatbot', chatbotSchema);

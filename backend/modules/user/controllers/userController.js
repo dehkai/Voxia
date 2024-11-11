@@ -3,6 +3,8 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const { getUserTokenByEmail } = require('../services/userService');
+
 
 const register = async (req, res) => {
     try {
@@ -78,6 +80,9 @@ const login = async (req, res) => {
             { expiresIn: '1h' }
         );
 
+        user.token = token; // Update the user's token field
+        await user.save();
+
         console.log('Login successful for user:', email);
 
         res.status(200).json({
@@ -99,7 +104,57 @@ const login = async (req, res) => {
     }
 };
 
+const getToken = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Fetch the token from the service
+        const token = await getUserTokenByEmail(email);
+
+        res.status(200).json({
+            message: 'Token fetched successfully',
+            token
+        });
+    } catch (error) {
+        console.error('Error fetching token:', error);
+        res.status(500).json({ message: `Error fetching token: ${error.message}` });
+
+    }
+}
+const updateUserDetails = async (req, res) => {
+    try {
+        const userId = req.user.userId;  
+        const updatedData = req.body;    
+
+        // Find the user and update the details
+        const user = await User.findByIdAndUpdate(userId, updatedData, { new: true });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            message: 'User details updated successfully',
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                gender: user.gender,
+                jobTitle: user.jobTitle,
+                preferences: user.preferences,
+                updatedAt: user.updatedAt
+            }
+        });
+    } catch (error) {
+        console.error('Error updating user details:', error);
+        res.status(500).json({ message: 'Error updating user details', error: error.message });
+    }
+};
+
 module.exports = {
     register,
-    login
+    login,
+    getToken,
+    updateUserDetails
 };

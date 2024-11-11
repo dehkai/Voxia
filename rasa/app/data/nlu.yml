@@ -1,6 +1,26 @@
 version: "3.1"
 
 nlu:
+  - intent: provide_email
+    examples: |
+      - alex@origtek.com.my
+      - my email is [alex@origtek.com.my](email)
+      - contact me at [alex@origtek.com.my](email)
+      - [alex@origtek.com.my](email)
+
+  - intent: check_token_status
+    examples: |
+      - What is my token status?
+      - Do I have a token?
+      - Show me my token
+      - Check my authentication token
+
+  - intent: request_pdf
+    examples: |
+      - Please generate a PDF for me
+      - I need a PDF report
+      - Can you create a PDF?
+      - Generate a PDF with my data
   - intent: greet
     examples: |
       - hey

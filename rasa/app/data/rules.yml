@@ -1,6 +1,11 @@
 version: "3.1"
 
 rules:
+
+  - rule: PDF generation rule
+    steps:
+      - intent: request_pdf
+      - action: action_generate_pdf
   - rule: Activate flight search form
     steps:
       - intent: search_flights
