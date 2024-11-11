@@ -105,67 +105,119 @@ class ActionSetTripType(Action):
             
         return [SlotSet("trip_type", trip_type)]
     
-class ActionSearchFlights(Action):
+class ActionSearchHotels(Action):
+    """Rasa action for searching hotels using Amadeus API"""
+
     def name(self) -> Text:
-        return "action_search_flights"
-        
-    def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single") -> bool:
-        """Validate flight search parameters"""
-        if not all([origin, destination, departure_date]):
+        return "action_search_hotels"
+
+    def validate_hotel_params(self, city: str, check_in: str, check_out: str) -> bool:
+        """Validate hotel search parameters"""
+        if not all([city, check_in, check_out]):
             return False
-            
+
         try:
-            # Convert to datetime objects and strip time component
-            departure = datetime.strptime(departure_date, '%Y-%m-%d').date()
-            current_date = datetime.now().date()
-            
-            if return_date and trip_type == "round":
-                return_d = datetime.strptime(return_date, '%Y-%m-%d').date()
-                return return_d > departure and departure >= current_date
-            return departure >= current_date
+            check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+            check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+            return check_out_date > check_in_date
         except ValueError:
             return False
 
-    def format_flight_details(self, offer: Dict[str, Any]) -> str:
-        """Format flight offer details for display"""
-        try:
-            price = offer['price']['total']
-            itinerary = offer['itineraries'][0]
-            segment = itinerary['segments'][0]
-            
-            departure_time = datetime.fromisoformat(segment['departure']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
-            arrival_time = datetime.fromisoformat(segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
-            
-            return (
-                f"🛩️ Flight: {segment['carrierCode']} {segment['number']}\n"
-                f"💰 Price: MYR {price}\n"
-                f"⏱️ Duration: {itinerary['duration']}\n"
-                f"🛫 Departure: {departure_time}\n"
-                f"🛬 Arrival: {arrival_time}\n"
-                f"📍 From: {segment['departure']['iataCode']} to {segment['arrival']['iataCode']}"
-            )
-        except Exception as e:
-            logger.error(f"Error formatting flight details: {str(e)}")
-            return "Error formatting flight details"
+    def get_hotels_by_city(self, amadeus: Client, city_code: str) -> List[Dict[str, Any]]:
+        """
+        Get list of hotels in a city using Amadeus API
 
-    async def search_flights(self, amadeus, origin: str, destination: str, date: str) -> List[str]:
-        """Search flights for a given route and format the results"""
+        Args:
+            amadeus: Amadeus client instance
+            city_code: IATA city code (e.g., 'KUL' for Kuala Lumpur)
+
+        Returns:
+            List of hotel information including hotelIds
+        """
         try:
-            response = amadeus.shopping.flight_offers_search.get(
-                originLocationCode=origin,
-                destinationLocationCode=destination,
-                departureDate=date,
-                adults=1,
-                max=3,
-                currencyCode="MYR"
-            )
-            
+            # The correct API path for hotel search by city
+            response = amadeus.get('/v1/reference-data/locations/hotels/by-city',
+                                 cityCode=city_code)
+
             if response.data:
-                return [self.format_flight_details(offer) for offer in response.data[:3]]
+                logger.info(f"Found {len(response.data)} hotels in {city_code}")
+                return response.data
             return []
+
+        except ResponseError as error:
+            logger.error(f"Error fetching hotels by city: [{error.response.status_code}] {error.response.body}")
+            raise
         except Exception as e:
-            logger.error(f"Error searching flights: {str(e)}")
+            logger.error(f"Unexpected error in get_hotels_by_city: {str(e)}")
+            raise
+
+    def get_hotel_offers(self, amadeus: Client, hotel_ids: List[str], check_in: str, check_out: str) -> List[Dict[str, Any]]:
+        """
+        Get hotel offers for specified hotels
+
+        Args:
+            amadeus: Amadeus client instance
+            hotel_ids: List of hotel IDs to search for
+            check_in: Check-in date (YYYY-MM-DD)
+            check_out: Check-out date (YYYY-MM-DD)
+
+        Returns:
+            List of hotel offers with pricing and availability
+        """
+        try:
+            # Convert list of hotel IDs to comma-separated string
+            hotel_ids_str = ','.join(hotel_ids)
+
+            # Using direct API path for hotel offers
+            response = amadeus.get('/v3/shopping/hotel-offers',
+                                 hotelIds=hotel_ids_str,
+                                 adults='1',
+                                 checkInDate=check_in,
+                                 checkOutDate=check_out,
+                                 currency="MYR")
+
+            if response.data:
+                logger.info(f"Found offers for {len(response.data)} hotels")
+                return response.data
             return []
+
+        except ResponseError as error:
+            logger.error(f"Error fetching hotel offers: [{error.response.status_code}] {error.response.body}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in get_hotel_offers: {str(e)}")
+            raise
+
+    def format_hotel_details(self, hotel: Dict[str, Any]) -> str:
+        """Format hotel offer details for display, with safeguards for list structures."""
+        try:
+            # Ensure 'offers' is a list and access the first element
+            offers = hotel.get('offers', [])
+            if not offers or not isinstance(offers, list):
+                return "No offers available for this hotel."
+
+            # Access the first offer safely
+            offer = offers[0]
+
+            # Access hotel data
+            hotel_data = hotel.get('hotel', {})
+
+            # Safely access fields with default values if missing
+            hotel_name = hotel_data.get('name', 'N/A')
+            price_total = offer.get('price', {}).get('total', 'N/A')
+            #currency = offer.get('price', {}).get('currency', 'N/A')
+            rating = hotel_data.get('rating', 'N/A')
+            description_text = hotel_data.get('description', {}).get('text', 'N/A')[:100]
+
+            return (
+                f"🏨 Hotel: {hotel_name}\n"
+                f"💰 Price: RM {price_total} \n"
+                f"⭐ Rating: {rating}\n"
+                f"📝 Description: {description_text}..."
+            )
+        except Exception as e:
+            logger.error(f"Error formatting hotel details: {str(e)}")
+            return "Error formatting hotel details"
 
     async def run(
         self,
@@ -174,165 +226,65 @@ class ActionSearchFlights(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         # Get slots
-        trip_type = tracker.get_slot("trip_type")
-        origin = tracker.get_slot("origin")
-        destination = tracker.get_slot("destination")
-        departure_date = tracker.get_slot("departure_date")
-        return_date = tracker.get_slot("return_date") if trip_type == "round" else None
-        
-        # Log the received values
-        logger.info(f"Received values - Trip Type: {trip_type}, Origin: {origin}, Destination: {destination}, "
-                   f"Departure: {departure_date}, Return: {return_date}")
-        
-        # Validate parameters
-        if not self.validate_flight_params(origin, destination, departure_date, return_date, trip_type):
-            dispatcher.utter_message(
-                text="Please provide valid flight details."
-            )
-            return [SlotSet("flights_found", False)]
-            
-        try:
-            logger.info(f"Searching {trip_type} trip flights: {origin} -> {destination} on {departure_date}")
-            
-            amadeus = AmadeusClient().amadeus
-            
-            # Search outbound flights
-            outbound_details = await self.search_flights(amadeus, origin, destination, departure_date)
-            
-            if outbound_details:
-                # For single trip, just show outbound flights
-                if trip_type == "single":
-                    message = f"✈️ Outbound flights from {origin} to {destination}:\n\n"
-                    message += "\n\n".join(outbound_details)
-                    dispatcher.utter_message(text=message)
-                    return [SlotSet("flights_found", True)]
-                
-                # For round trip, search and show both outbound and return flights
-                elif trip_type == "round" and return_date:
-                    # Search return flights
-                    return_details = await self.search_flights(amadeus, destination, origin, return_date)
-                    
-                    if return_details:
-                        # First show outbound options
-                        message = f"✈️ Outbound Options ({departure_date}):\n\n"
-                        message += "\n\n".join(outbound_details)
-                        dispatcher.utter_message(text=message)
-                        
-                        # Then show return options
-                        message = f"\n🔄 Return Options ({return_date}):\n\n"
-                        message += "\n\n".join(return_details)
-                        dispatcher.utter_message(text=message)
-                        
-                        # Display total combinations available
-                        total_combinations = len(outbound_details) * len(return_details)
-                        message = (f"\n📊 Total {total_combinations} combinations available. "
-                                 "Please let me know which outbound and return flights you prefer.")
-                        dispatcher.utter_message(text=message)
-                        return [SlotSet("flights_found", True)]
-                    else:
-                        dispatcher.utter_message(
-                            text=f"Sorry, no return flights found for {return_date}."
-                        )
-                        return [SlotSet("flights_found", False)]
-            else:
-                dispatcher.utter_message(
-                    text=f"Sorry, no outbound flights found for {departure_date}."
-                )
-                return [SlotSet("flights_found", False)]
-                
-        except ResponseError as error:
-            logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
-            dispatcher.utter_message(
-                text="Sorry, there was an error searching for flights. Please try again later."
-            )
-            return [SlotSet("flights_found", False)]
-        except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
-            dispatcher.utter_message(
-                text="An unexpected error occurred. Please try again later."
-            )
-            return [SlotSet("flights_found", False)]
-
-class ActionSearchHotels(Action):
-    """Rasa action for searching hotels using Amadeus API"""
-    
-    def name(self) -> Text:
-        return "action_search_hotels"
-    
-    def validate_hotel_params(self, city: str, check_in: str, check_out: str) -> bool:
-        """Validate hotel search parameters"""
-        if not all([city, check_in, check_out]):
-            return False
-            
-        try:
-            check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
-            check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
-            return check_out_date > check_in_date
-        except ValueError:
-            return False
-
-    def format_hotel_details(self, hotel: Dict[str, Any]) -> str:
-        """Format hotel offer details for display"""
-        offer = hotel['offers'][0]
-        hotel_data = hotel['hotel']
-        
-        return (
-            f"🏨 Hotel: {hotel_data['name']}\n"
-            f"💰 Price: {offer['price']['total']} {offer['price']['currency']}\n"
-            f"⭐ Rating: {hotel_data.get('rating', 'N/A')}\n"
-            f"📍 Address: {hotel_data['address']['lines'][0]}, {hotel_data['address'].get('cityName', '')}\n"
-            f"📝 Description: {hotel_data.get('description', {}).get('text', 'N/A')[:100]}..."
-        )
-
-    async def run(
-        self,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: Dict[Text, Any]
-    ) -> List[Dict[Text, Any]]:
-        
         city_code = tracker.get_slot("city")
         check_in = tracker.get_slot("check_in")
         check_out = tracker.get_slot("check_out")
-        
+
         if not self.validate_hotel_params(city_code, check_in, check_out):
             dispatcher.utter_message(
                 text="Please provide valid city, check-in, and check-out dates."
             )
             return []
-            
+
         try:
-            logger.info(f"Searching hotels in {city_code} from {check_in} to {check_out}")
-            
+            logger.info(f"Starting hotel search in {city_code} from {check_in} to {check_out}")
+
+            # Initialize Amadeus Client
             amadeus = AmadeusClient().amadeus
-            response = amadeus.shopping.hotel_offers.get(
-                cityCode=city_code,
-                checkInDate=check_in,
-                checkOutDate=check_out,
-                adults=1,
-                radius=5,
-                radiusUnit='KM',
-                paymentPolicy='NONE',
-                includeClosed=False,
-                bestRateOnly=True
+
+            # Step 1: Get list of hotels in the city
+            hotels_in_city = self.get_hotels_by_city(amadeus, city_code)
+
+            if not hotels_in_city:
+                dispatcher.utter_message(
+                    text=f"Sorry, no hotels found in {city_code}."
+                )
+                return []
+
+            # Create a mapping of hotel IDs to hotel info for later use
+            hotel_info_map = {hotel['hotelId']: hotel for hotel in hotels_in_city}
+
+            # Get first 10 hotel IDs (can adjust this number as needed)
+            hotel_ids = [hotel['hotelId'] for hotel in hotels_in_city[:10]]
+
+            # Step 2: Get hotel offers for these hotels
+            hotel_offers = self.get_hotel_offers(
+                amadeus,
+                hotel_ids,
+                check_in,
+                check_out
             )
-            
-            if response.data:
-                hotel_details = [
-                    self.format_hotel_details(hotel)
-                    for hotel in response.data[:3]
-                ]
-                
+
+            if hotel_offers:
+                # Format hotel details combining data from both APIs
+                hotel_details = []
+                for hotel_offer in hotel_offers[:3]:  # Show top 3 offers
+                    hotel_id = hotel_offer['hotel']['hotelId']
+                    hotel_info = hotel_info_map.get(hotel_id, {})
+                    formatted_details = self.format_hotel_details(hotel_offer)
+                    hotel_details.append(formatted_details)
+
+                # Send message with hotel options
                 dispatcher.utter_message(
                     text=(
-                        f"🏨 Found {len(response.data)} hotels in {city_code}.\n"
+                        f"🏨 Found {len(hotel_offers)} available hotels in {city_code}.\n"
                         f"Here are the top options:\n\n" +
                         "\n\n".join(hotel_details)
                     )
                 )
             else:
                 dispatcher.utter_message(
-                    text=f"Sorry, no hotels found in {city_code} for your dates."
+                    text=f"Sorry, no available hotels found in {city_code} for your dates."
                 )
                 
         except ResponseError as error:
