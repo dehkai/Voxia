@@ -117,6 +117,17 @@ slots:
 
 responses:
 
+  utter_restart_offer:
+    - text: "Would you like to start a new conversation?"
+      buttons:
+      - title: "Yes, start over"
+        payload: "/restart_conversation"
+      - title: "No, end chat"
+        payload: "/goodbye"
+  
+  utter_confirm_restart:
+    - text: "Alright, let's start fresh! How can I help you today?"
+
   utter_no_token: 
     - text: "No token has been fetched yet."
   utter_token_status:
@@ -208,6 +219,8 @@ actions:
   - action_generate_pdf
   - action_fetch_auth_token
   - action_check_token_status
+  - action_offer_restart
+  - action_restart_conversation
 
 forms:
   flight_search_form:

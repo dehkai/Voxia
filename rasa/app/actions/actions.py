@@ -11,8 +11,8 @@ import os
 from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
-from rasa_sdk.events import SlotSet
 import requests
+from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -20,6 +20,60 @@ load_dotenv(dotenv_path=env_path)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class ActionOfferRestart(Action):
+    """Action to offer conversation restart after flight search"""
+    
+    def name(self) -> Text:
+        return "action_offer_restart"
+        
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Offer restart with buttons
+        dispatcher.utter_message(
+            text="Would you like to start a new search?",
+            buttons=[
+                {"title": "Yes, start new search", "payload": "/restart_conversation"},
+                {"title": "No, end chat", "payload": "/goodbye"}
+            ]
+        )
+        return []
+
+class ActionRestartConversation(Action):
+    """Action to handle conversation restart"""
+    
+    def name(self) -> Text:
+        return "action_restart_conversation"
+        
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Clear all slots
+        events = [AllSlotsReset()]
+        
+        # Keep authentication-related slots if they exist
+        auth_token = tracker.get_slot("auth_token")
+        user_email = tracker.get_slot("user_email")
+        
+        if auth_token:
+            events.append(SlotSet("auth_token", auth_token))
+        if user_email:
+            events.append(SlotSet("user_email", user_email))
+            
+        # Add Restarted event
+        events.append(Restarted())
+        
+        # Confirm restart
+        dispatcher.utter_message(response="utter_confirm_restart")
+        
+        return events
 
 class MongoDBClient:
     """Singleton class for MongoDB client"""
@@ -104,6 +158,171 @@ class ActionSetTripType(Action):
             trip_type = "round"
             
         return [SlotSet("trip_type", trip_type)]
+class ActionSearchFlights(Action):
+    def name(self) -> Text:
+        return "action_search_flights"
+        
+    def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single") -> bool:
+        """Validate flight search parameters"""
+        if not all([origin, destination, departure_date]):
+            return False
+            
+        try:
+            # Convert to datetime objects and strip time component
+            departure = datetime.strptime(departure_date, '%Y-%m-%d').date()
+            current_date = datetime.now().date()
+            
+            if return_date and trip_type == "round":
+                return_d = datetime.strptime(return_date, '%Y-%m-%d').date()
+                return return_d > departure and departure >= current_date
+            return departure >= current_date
+        except ValueError:
+            return False
+
+    def format_flight_details(self, offer: Dict[str, Any]) -> str:
+        """Format flight offer details for display"""
+        try:
+            price = offer['price']['total']
+            itinerary = offer['itineraries'][0]
+            segment = itinerary['segments'][0]
+            
+            departure_time = datetime.fromisoformat(segment['departure']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
+            arrival_time = datetime.fromisoformat(segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
+            
+            return (
+                f"🛩️ Flight: {segment['carrierCode']} {segment['number']}\n"
+                f"💰 Price: RM {price}\n"
+                f"⏱️ Duration: {itinerary['duration']}\n"
+                f"🛫 Departure: {departure_time}\n"
+                f"🛬 Arrival: {arrival_time}\n"
+                f"📍 From: {segment['departure']['iataCode']} to {segment['arrival']['iataCode']}"
+            )
+        except Exception as e:
+            logger.error(f"Error formatting flight details: {str(e)}")
+            return "Error formatting flight details"
+
+    async def search_flights(self, amadeus, origin: str, destination: str, date: str) -> List[str]:
+        """Search flights for a given route and format the results"""
+        try:
+            response = amadeus.shopping.flight_offers_search.get(
+                originLocationCode=origin,
+                destinationLocationCode=destination,
+                departureDate=date,
+                adults=1,
+                max=3,
+                currencyCode="MYR"
+            )
+            
+            if response.data:
+                return [self.format_flight_details(offer) for offer in response.data[:3]]
+            return []
+        except Exception as e:
+            logger.error(f"Error searching flights: {str(e)}")
+            return []
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Get slots
+        trip_type = tracker.get_slot("trip_type")
+        origin = tracker.get_slot("origin")
+        destination = tracker.get_slot("destination")
+        departure_date = tracker.get_slot("departure_date")
+        return_date = tracker.get_slot("return_date") if trip_type == "round" else None
+        
+        # Log the received values
+        logger.info(f"Received values - Trip Type: {trip_type}, Origin: {origin}, Destination: {destination}, "
+                   f"Departure: {departure_date}, Return: {return_date}")
+        
+        # Validate parameters
+        if not self.validate_flight_params(origin, destination, departure_date, return_date, trip_type):
+            dispatcher.utter_message(
+                text="Please provide valid flight details."
+            )
+            return [SlotSet("flights_found", False)]
+            
+        try:
+            logger.info(f"Searching {trip_type} trip flights: {origin} -> {destination} on {departure_date}")
+            
+            amadeus = AmadeusClient().amadeus
+            
+            # Search outbound flights
+            outbound_details = await self.search_flights(amadeus, origin, destination, departure_date)
+            
+            if outbound_details:
+                # For single trip, just show outbound flights
+                if trip_type == "single":
+                    message = f"✈️ Outbound flights from {origin} to {destination}:\n\n"
+                    message += "\n\n".join(outbound_details)
+                    dispatcher.utter_message(text=message)
+                    return [
+                        SlotSet("flights_found", True),
+                        ActionExecuted("action_offer_restart")
+                    ]                
+
+                # For round trip, search and show both outbound and return flights
+                elif trip_type == "round" and return_date:
+                    # Search return flights
+                    return_details = await self.search_flights(amadeus, destination, origin, return_date)
+                    
+                    if return_details:
+                        # First show outbound options
+                        message = f"✈️ Outbound Options ({departure_date}):\n\n"
+                        message += "\n\n".join(outbound_details)
+                        dispatcher.utter_message(text=message)
+                        
+                        # Then show return options
+                        message = f"\n🔄 Return Options ({return_date}):\n\n"
+                        message += "\n\n".join(return_details)
+                        dispatcher.utter_message(text=message)
+                        
+                        # Display total combinations available
+                        total_combinations = len(outbound_details) * len(return_details)
+                        message = (f"\n📊 Total {total_combinations} combinations available. "
+                                 "Please let me know which outbound and return flights you prefer.")
+                        dispatcher.utter_message(text=message)
+                        return [
+                            SlotSet("flights_found", True),
+                            ActionExecuted("action_offer_restart")
+                        ]
+                    else:
+                        dispatcher.utter_message(
+                            text=f"Sorry, no return flights found for {return_date}."
+                        )
+                        return [
+                            SlotSet("flights_found", False),
+                            ActionExecuted("action_offer_restart")
+                        ]
+            else:
+                dispatcher.utter_message(
+                    text=f"Sorry, no outbound flights found for {departure_date}."
+                )
+                return [
+                    SlotSet("flights_found", False),
+                    ActionExecuted("action_offer_restart")
+                ]
+                
+        except ResponseError as error:
+            logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
+            # dispatcher.utter_message(
+            #     text="Sorry, there was an error searching for flights. Please try again later."
+            # )
+            return [
+                    SlotSet("flights_found", False),
+                    ActionExecuted("action_offer_restart")
+                ]
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            # dispatcher.utter_message(
+            #     text="An unexpected error occurred. Please try again later."
+            # )
+            return [
+                    SlotSet("flights_found", False),
+                    ActionExecuted("action_offer_restart")
+                ]
     
 class ActionSearchHotels(Action):
     """Rasa action for searching hotels using Amadeus API"""
