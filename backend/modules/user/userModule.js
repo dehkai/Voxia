@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('./controllers/userController');
 const authMiddleware = require('../../middlewares/authMiddleware');
+const { forgotPassword, resetPassword } = require('../user/controllers/authController');
 const User = require('../user/models/User');
 
 router.post('/login', userController.login); 
@@ -31,6 +32,10 @@ router.get('/profile', authMiddleware, async (req, res) => {
     }
 });
 router.put('/update-profile', authMiddleware, userController.updateUserDetails);
+
+// Forgot password route
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 module.exports = {
     userRoutes: router
