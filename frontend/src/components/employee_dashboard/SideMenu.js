@@ -6,9 +6,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-//import SelectContent from './SelectContent';
 import MenuContent from './MenuContent';
-//import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
 
 const drawerWidth = 240;
@@ -25,6 +23,32 @@ const Drawer = styled(MuiDrawer)({
 });
 
 export default function SideMenu() {
+  const [user, setUser] = React.useState({ username: '', email: '' });
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (token) {
+      fetch('http://localhost:5000/api/auth/profile', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          setUser(data.user); 
+        })
+        .catch((error) => {
+          console.error('Error fetching user profile:', error);
+        });
+    }
+  }, []);
+
   return (
     <Drawer
       variant="permanent"
@@ -35,18 +59,8 @@ export default function SideMenu() {
         },
       }}
     >
-      {/* <Box
-        sx={{
-          display: 'flex',
-          mt: 'calc(var(--template-frame-height, 0px) + 4px)',
-          p: 1.5,
-        }}
-      >
-        <SelectContent />
-      </Box> */}
       <Divider />
       <MenuContent />
-      {/* <CardAlert /> */}
       <Stack
         direction="row"
         sx={{
@@ -59,16 +73,16 @@ export default function SideMenu() {
       >
         <Avatar
           sizes="small"
-          alt="Riley Carter"
-          src="/static/images/avatar/7.jpg"
+          alt={user.username}
+          src="/static/images/avatar/7.jpg" // Optionally update with user avatar
           sx={{ width: 36, height: 36 }}
         />
         <Box sx={{ mr: 'auto' }}>
           <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
-            Riley Carter
+            {user.username} {/* Display username */}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            riley@email.com
+            {user.email} {/* Display email */}
           </Typography>
         </Box>
         <OptionsMenu />

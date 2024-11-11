@@ -1,0 +1,276 @@
+version: "3.1"
+
+nlu:
+  - intent: provide_email
+    examples: |
+      - alex@origtek.com.my
+      - my email is [alex@origtek.com.my](email)
+      - contact me at [alex@origtek.com.my](email)
+      - [alex@origtek.com.my](email)
+
+  - intent: check_token_status
+    examples: |
+      - What is my token status?
+      - Do I have a token?
+      - Show me my token
+      - Check my authentication token
+
+  - intent: request_pdf
+    examples: |
+      - Please generate a PDF for me
+      - I need a PDF report
+      - Can you create a PDF?
+      - Generate a PDF with my data
+  - intent: greet
+    examples: |
+      - hey
+      - hello
+      - hi
+      - hello there
+      - good morning
+      - good evening
+      - moin
+      - hey there
+      - let's go
+      - hey dude
+      - goodmorning
+      - goodevening
+      - good afternoon
+
+  - intent: goodbye
+    examples: |
+      - cu
+      - good by
+      - cee you later
+      - good night
+      - bye
+      - goodbye
+      - have a nice day
+      - see you around
+      - bye bye
+      - see you later
+
+  - intent: affirm
+    examples: |
+      - yes
+      - indeed
+      - of course
+      - that sounds good
+      - correct
+      - that's right
+      - sounds good
+      - that works
+
+  - intent: deny
+    examples: |
+      - no
+      - n
+      - never
+      - I don't think so
+      - don't like that
+      - no way
+      - not really
+      - not interested
+      - I'll pass
+      - maybe later
+
+  - intent: mood_unhappy
+    examples: |
+      - my day was horrible
+      - I am sad
+      - I don't feel very well
+      - I am disappointed
+      - super sad
+      - I'm so sad
+      - sad
+      - very sad
+      - unhappy
+      - not good
+      - not very good
+      - extremly sad
+      - so saad
+      - so sad
+
+  - intent: bot_challenge
+    examples: |
+      - are you a bot?
+      - are you a human?
+      - am I talking to a bot?
+      - am I talking to a human?
+      - what are you?
+      - who are you?
+      - are you real?
+      - are you a robot?
+
+  - intent: search_flights
+    examples: |
+      - I want to book a flight
+      - I need to find a flight
+      - Search for flights
+      - Show me available flights
+      - I want to fly
+      - Help me find flights
+      - I need to travel by air
+      - Looking for flight tickets
+      - Book air tickets
+      - Find me a flight from [LON](airport_code) to [NYC](airport_code)
+      - I want to fly from [PAR](airport_code) to [DXB](airport_code)
+      - Flight booking from [SFO](airport_code)
+      - Flights to [SIN](airport_code)
+      - Show flights for [2024-05-15](date)
+      - Need flights on [2024-06-20](date)
+      - I'm departing from [LGA](airport_code)  
+      - We are leaving from [LAX](airport_code)
+      - Starting my journey from [SFO](airport_code)
+      - Taking off from [DXB](airport_code)
+      - Could you find flights from [CDG](airport_code)
+      - Please look for flights from [AMS](airport_code)
+      - Would like to depart from [HKG](airport_code)
+      - Flying out of [ATL](airport_code) airport
+      - Departing [ORD](airport_code) terminal
+      - Leaving from [MIA](airport_code) international
+
+  - intent: search_hotels
+    examples: |
+      - I need a hotel
+      - Find me accommodation
+      - Search for hotels
+      - Show me places to stay
+      - Book a hotel
+      - Need a place to stay in [PAR](city_code)
+      - Find hotels in [NYC](city_code)
+      - Looking for accommodation in [LON](city_code)
+      - Hotel booking in [SIN](city_code)
+      - Book a room from [2024-05-15](date) to [2024-05-20](date)
+      - Need a hotel for [2024-06-20](date)
+      - Show hotels with check-in on [2024-07-01](date)
+
+  - intent: provide_travel_dates
+    examples: |
+      - I want to travel on [2024-05-15](date)
+      - My departure date is [2024-06-20](date)
+      - Flying on [2024-07-01](date)
+      - Leaving on [2024-08-15](date)
+      - The trip is on [2024-09-10](date)
+      - Planning to stay from [2024-05-15](date) to [2024-05-20](date)
+      - Check-in on [2024-06-01](date) and check-out on [2024-06-05](date)
+      - Booking for [2024-07-10](date) until [2024-07-15](date)
+
+  - intent: provide_location
+    examples: |
+      - from [LON](airport_code)
+      - to [NYC](airport_code)
+      - departing from [PAR](airport_code)
+      - arriving at [DXB](airport_code)
+      - [SFO](airport_code) to [LAX](airport_code)
+      - staying in [PAR](city_code)
+      - accommodation in [NYC](city_code)
+      - hotel in [LON](city_code)
+      - [SIN](city_code) city center
+      - I am flying from [LON](airport_code)
+      - I will be flying from [NYC](airport_code)
+      - My flight is from [PAR](airport_code)
+
+  - regex: airport_code
+    examples: |
+      - [A-Z]{3}
+
+  - regex: city_code
+    examples: |
+      - [A-Z]{3}
+
+  - regex: date
+    examples: |
+      - [0-9]{4}-[0-9]{2}-[0-9]{2}
+
+  - lookup: airport_code
+    examples: |
+      - LON
+      - NYC
+      - PAR
+      - DXB
+      - SFO
+      - LAX
+      - SIN
+      - HKG
+      - TYO
+      - BER
+      - CDG
+      - AMS
+      - ATL
+      - ORD
+      - LGA
+      - MIA
+      - DFW
+      - SEA
+
+  - lookup: city_code
+    examples: |
+      - LON
+      - NYC
+      - PAR
+      - DXB
+      - SFO
+      - LAX
+      - SIN
+      - HKG
+      - TYO
+      - BER
+      - MEX
+      - SYD
+      - DEL
+      - BCN
+      - FCO
+  - intent: choose_trip_type
+    examples: |
+      - I want to book a [single](trip_type) trip
+      - I need a [round](trip_type) trip flight
+      - [single](trip_type) trip please
+      - [round](trip_type) trip booking
+      - Looking for a [single](trip_type) flight
+      - Need a [round](trip_type) trip ticket
+      - Book a [round](trip_type) trip flight
+      - I want to fly there and back
+      - Need to book return tickets
+      - Looking for return flight options
+      
+  - intent: single_trip
+    examples: |
+      - single trip
+      - one way
+      - single
+      - just one way
+      - single direction
+      - no return flight
+      - flying one way
+      - one direction only
+      - only going there
+      - just the outbound flight
+
+  - intent: round_trip
+    examples: |
+      - round trip
+      - return flight
+      - two way
+      - round
+      - with return
+      - need to come back
+      - return ticket
+      - flying back
+      - need return flight
+      - going and coming back
+      - both ways
+      - both directions
+      - there and back
+
+  - intent: provide_return_date
+    examples: |
+      - coming back on [2024-05-20](date)
+      - return on [2024-06-15](date)
+      - flying back [2024-07-01](date)
+      - return flight on [2024-08-10](date)
+      - want to return on [2024-09-05](date)
+      - back on [2024-10-12](date)
+      - returning [2024-11-20](date)
+      - my return is [2024-12-25](date)
+      - return journey on [2024-12-31](date)

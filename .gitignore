@@ -13,6 +13,28 @@
 # production
 /build
 
+# Rasa cache and temporary files
+rasa/**/*.db
+rasa/cache/
+*.pkl
+*.json
+.cache/
+
+# Rasa model files
+rasa/models/
+*.tar.gz
+
+# Tensorflow cache files
+*checkpoint
+*tf_model*
+*DIETClassifier*
+*unexpected_intent_policy*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
 # misc
 .DS_Store
 .env.local
@@ -20,6 +42,8 @@
 .env.test.local
 .env.production.local
 .env
+.backend.env
+.docker.env
 
 npm-debug.log*
 yarn-debug.log*

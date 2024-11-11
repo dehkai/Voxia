@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import MenuContent from './MenuContent';
 //import CardAlert from './CardAlert';
 import OptionsMenu from './OptionsMenu';
+import AppTheme from '../../shared-theme/AppTheme';
 
 const drawerWidth = 240;
 
@@ -25,7 +26,33 @@ const Drawer = styled(MuiDrawer)({
 });
 
 export default function SideMenu() {
+  const [user, setUser] = React.useState({ username: '', email: '' });
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (token) {
+      fetch('http://localhost:5000/api/auth/profile', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          setUser(data.user); 
+        })
+        .catch((error) => {
+          console.error('Error fetching user profile:', error);
+        });
+    }
+  }, []);
   return (
+    <AppTheme>
     <Drawer
       variant="permanent"
       sx={{
@@ -35,18 +62,8 @@ export default function SideMenu() {
         },
       }}
     >
-      {/* <Box
-        sx={{
-          display: 'flex',
-          mt: 'calc(var(--template-frame-height, 0px) + 4px)',
-          p: 1.5,
-        }}
-      >
-        <SelectContent />
-      </Box> */}
       <Divider />
       <MenuContent />
-      {/* <CardAlert /> */}
       <Stack
         direction="row"
         sx={{
@@ -59,20 +76,21 @@ export default function SideMenu() {
       >
         <Avatar
           sizes="small"
-          alt="Riley Carter"
+          alt={user.username}
           src="/static/images/avatar/7.jpg"
           sx={{ width: 36, height: 36 }}
         />
         <Box sx={{ mr: 'auto' }}>
           <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: '16px' }}>
-            Riley Carter
+          {user.username}
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            riley@email.com
+          {user.email}
           </Typography>
         </Box>
         <OptionsMenu />
       </Stack>
     </Drawer>
+    </AppTheme>
   );
 }

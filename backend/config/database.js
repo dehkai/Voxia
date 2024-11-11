@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: '.backend.env' });
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = `mongodb+srv://dehkai:${process.env.DB_PASSWORD}@voxia.bkbvl.mongodb.net/?retryWrites=true&w=majority&appName=Voxia`;
 

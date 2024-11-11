@@ -1,0 +1,229 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - mood_unhappy
+  - bot_challenge
+  - search_flights
+  - search_hotels
+  - provide_travel_dates
+  - provide_location
+  - choose_trip_type
+  - single_trip
+  - round_trip
+  - provide_return_date
+  - request_pdf
+  - provide_email
+  - check_token_status
+
+entities:
+  - airport_code
+  - city_code
+  - date
+  - trip_type
+  - email
+
+slots:
+
+  origin:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: airport_code
+    influence_conversation: true
+
+  destination:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: airport_code
+    influence_conversation: true
+  
+  departure_date:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+
+  return_date:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+
+  trip_type:
+    type: categorical
+    values:
+      - single
+      - round
+    mappings:
+      - type: from_trigger_intent
+        intent: single_trip
+        value: single
+      - type: from_trigger_intent
+        intent: round_trip
+        value: round
+    influence_conversation: true
+  
+  city:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: city_code
+    influence_conversation: true
+  
+  check_in:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+  
+  check_out:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: date
+    influence_conversation: true
+
+  flights_found:
+    type: bool
+    influence_conversation: true
+    mappings:
+    - type: custom
+  
+  api_token:
+    type: text
+    mappings:
+      - type: from_text  # Adding an empty mapping to avoid the error
+
+  user_email:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: email
+
+  auth_token:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+
+responses:
+
+  utter_no_token: 
+    - text: "No token has been fetched yet."
+  utter_token_status:
+    - text: "Your authentication token is: {token}"
+
+  utter_greet:
+    - text: "Hey! How can I help you with your travel plans today?"
+
+  utter_cheer_up:
+  - text: "Here is something to cheer you up:"
+    image: "https://i.imgur.com/nGF1K8f.jpg"
+
+  utter_did_that_help:
+  - text: "Did that help you?"
+
+  utter_goodbye:
+    - text: "Have a great trip! Goodbye!"
+
+  utter_affirm:
+    - text: "Great! Let me help you with that."
+
+  utter_deny:
+    - text: "No problem. Is there something else I can help you with?"
+
+  utter_iamabot:
+    - text: "I am a travel assistant bot, powered by Rasa."
+
+  utter_ask_origin:
+    - text: "Which city are you flying from? (Please provide the airport code, e.g., 'LON' for London)"
+
+  utter_ask_destination:
+    - text: "Where would you like to fly to? (Please provide the airport code, e.g., 'NYC' for New York)"
+
+  utter_ask_departure_date:
+    - text: "When would you like to travel? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_ask_city:
+    - text: "Which city would you like to stay in? (Please provide the city code, e.g., 'PAR' for Paris)"
+
+  utter_ask_check_in:
+    - text: "What's your check-in date? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_ask_check_out:
+    - text: "What's your check-out date? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_submit:
+    - text: "I'll search for the best options for you right away."
+
+  utter_happy:
+    - text: "I'm glad to hear that!"
+
+  utter_no_flights_found:
+    - text: "Sorry, no flights were found matching your criteria. Please try again with different details."
+  
+  utter_ask_trip_type:
+    - text: "Would you like to book a single trip or round trip flight?"
+      buttons:
+      - title: "Single Trip"
+        payload: "/single_trip"
+      - title: "Round Trip"
+        payload: "/round_trip"
+
+  utter_ask_return_date:
+    - text: "What's your return date? (Please provide the date in YYYY-MM-DD format)"
+
+  utter_slots_values:
+    - text: "I have these details from you:\n
+            From: {origin}\n
+            To: {destination}\n
+            Date: {departure_date}"
+
+  utter_ask_continue:
+    - text: "Would you like to continue with your booking?"
+  
+  utter_ask_for_email:
+    - text: "Please provide your email to fetch the authentication token."
+  utter_token_received:
+    - text: "Your authentication token has been successfully fetched and stored."
+
+actions:
+  - action_search_flights
+  - action_search_hotels
+  - validate_flight_search_form
+  - choose_trip_type
+  - single_trip
+  - round_trip
+  - provide_return_date
+  - action_set_trip_type
+  - action_generate_pdf
+  - action_fetch_auth_token
+  - action_check_token_status
+
+forms:
+  flight_search_form:
+    required_slots:
+      - trip_type
+      - origin
+      - destination
+      - departure_date
+      - return_date
+
+  hotel_search_form:
+    required_slots:
+      - city
+      - check_in
+      - check_out
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

@@ -19,7 +19,6 @@ import ColorModeSelect from '../shared-theme/ColorModeSelect';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../utils/auth';
 
-
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
@@ -233,7 +232,6 @@ export default function SignIn(props) {
                 type="password"
                 id="password"
                 autoComplete="current-password"
-                autoFocus
                 required
                 fullWidth
                 variant="outlined"
@@ -263,6 +261,7 @@ export default function SignIn(props) {
           </Box>          
         </Card>
       </SignInContainer>
+      
     </AppTheme>
   );
 }
