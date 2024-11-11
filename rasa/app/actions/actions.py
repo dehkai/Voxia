@@ -1,3 +1,4 @@
+import re
 from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
@@ -178,21 +179,46 @@ class ActionSearchFlights(Action):
             return departure >= current_date
         except ValueError:
             return False
+    
+    @staticmethod
+    def format_duration(duration: str) -> str:
+        """Convert ISO 8601 duration (e.g., 'PT4H55M') to a readable format like '4 hours 55 minutes'."""
+        hours = minutes = 0
+        match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?', duration)
+        if match:
+            if match.group(1):
+                hours = int(match.group(1))
+            if match.group(2):
+                minutes = int(match.group(2))
+        
+        formatted_duration = []
+        if hours > 0:
+            formatted_duration.append(f"{hours} hour{'s' if hours > 1 else ''}")
+        if minutes > 0:
+            formatted_duration.append(f"{minutes} minute{'s' if minutes > 1 else ''}")
+        
+        return ' '.join(formatted_duration)
 
-    def format_flight_details(self, offer: Dict[str, Any]) -> str:
+    def format_flight_details(self, offer: Dict[str, Any],carriers: Dict[str, str]) -> str:
         """Format flight offer details for display"""
         try:
             price = offer['price']['total']
             itinerary = offer['itineraries'][0]
             segment = itinerary['segments'][0]
+
+            carrier_code = segment['carrierCode']
+            airline_name = carriers.get(carrier_code, carrier_code)
             
             departure_time = datetime.fromisoformat(segment['departure']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
             arrival_time = datetime.fromisoformat(segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
+
+            formatted_duration = self.format_duration(itinerary['duration'])
             
             return (
-                f"🛩️ Flight: {segment['carrierCode']} {segment['number']}\n"
+                f"🛩️ Airline: {airline_name}\n"
+                f"🛫 Flight: {segment['carrierCode']}{segment['number']}\n"
                 f"💰 Price: RM {price}\n"
-                f"⏱️ Duration: {itinerary['duration']}\n"
+                f"⏱️ Duration: {formatted_duration}\n"
                 f"🛫 Departure: {departure_time}\n"
                 f"🛬 Arrival: {arrival_time}\n"
                 f"📍 From: {segment['departure']['iataCode']} to {segment['arrival']['iataCode']}"
@@ -214,7 +240,8 @@ class ActionSearchFlights(Action):
             )
             
             if response.data:
-                return [self.format_flight_details(offer) for offer in response.data[:3]]
+                carriers = response.result['dictionaries']['carriers']
+                return [self.format_flight_details(offer, carriers) for offer in response.data[:3]]
             return []
         except Exception as e:
             logger.error(f"Error searching flights: {str(e)}")
