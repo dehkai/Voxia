@@ -2,6 +2,35 @@ version: "3.1"
 
 rules:
 
+  - rule: Offer restart after flight search failure
+    condition:
+      - slot_was_set:
+          - flights_found: false
+    steps:
+      - action: utter_no_flights_found
+      - action: action_offer_restart
+      - action: action_listen
+
+  - rule: Offer restart after successful flight search
+    condition:
+      - slot_was_set:
+          - flights_found: true
+    steps:
+      - action: action_offer_restart
+      - action: action_listen
+
+  - rule: Handle conversation restart
+    steps:
+      - intent: restart_conversation
+      - action: action_restart_conversation
+      - action: action_listen
+
+  - rule: Handle restart decline with goodbye
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+      - action: action_listen
+
   - rule: PDF generation rule
     steps:
       - intent: request_pdf

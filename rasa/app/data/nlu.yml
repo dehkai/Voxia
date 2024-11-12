@@ -1,6 +1,17 @@
 version: "3.1"
 
 nlu:
+  - intent: restart_conversation
+    examples: |
+      - restart
+      - start over
+      - begin again
+      - reset
+      - start fresh
+      - new conversation
+      - start a new chat
+      - let's start over
+      
   - intent: provide_email
     examples: |
       - alex@origtek.com.my

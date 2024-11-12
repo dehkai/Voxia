@@ -22,7 +22,7 @@ stories:
     steps:
     - intent: greet
     - action: utter_greet
-    - action: utter_affirm
+    #- action: utter_affirm
 
   - story: happy mood path
     steps:
