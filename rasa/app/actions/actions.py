@@ -22,6 +22,50 @@ load_dotenv(dotenv_path=env_path)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class ActionFetchUserPreferences(Action):
+    def name(self) -> str:
+        return "action_fetch_user_preferences"
+
+    async def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: dict):
+        # Fetch the token from the tracker
+        token = tracker.get_slot("auth_token")
+        
+        if not token:
+            dispatcher.utter_message(text="No valid token found. Please log in again.")
+            return []
+
+        try:
+            # Get the database instance from the MongoDBClient singleton
+            db_client = MongoDBClient()
+            user_collection = db_client.database["users"]  # Assuming the collection is named 'user'
+
+            # Query the user collection using the token
+            user_data = user_collection.find_one({"token": token})
+
+            if user_data:
+                # Extract preferences from the nested object
+                preferences = user_data.get("preferences", {})
+                cabin_class = preferences.get("cabinClass", "No cabin class preference set.")
+                hotel_rating = preferences.get("hotelRating", "No hotel rating preference set.")
+
+                # Inform the user and set slots for the preferences
+                dispatcher.utter_message(
+                    text=f"Preferences retrieved successfully!\n"
+                         f"Cabin Class: {cabin_class}\n"
+                         f"Hotel Rating: {hotel_rating} Star"
+                )
+                return [
+                    SlotSet("cabin_class", cabin_class),
+                    SlotSet("hotel_rating", hotel_rating),
+                ]
+            else:
+                dispatcher.utter_message(text="No preferences found for the provided token.")
+                return []
+        except Exception as e:
+            dispatcher.utter_message(text=f"An error occurred while fetching preferences: {str(e)}")
+            return []
+
+
 class ActionOfferRestart(Action):
     """Action to offer conversation restart after flight search"""
     
