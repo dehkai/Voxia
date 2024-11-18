@@ -6,12 +6,14 @@ stories:
       - intent: check_token_status
       - action: action_check_token_status
 
-  - story: provide email and fetch token
+  - story: display user preferences after fetching token
     steps:
       - intent: provide_email
       - action: action_fetch_auth_token
       - slot_was_set:
           - auth_token: null
+      - intent: display_preferences
+      - action: action_fetch_user_preferences
 
   - story: generate PDF story
     steps:
@@ -22,7 +24,6 @@ stories:
     steps:
     - intent: greet
     - action: utter_greet
-    #- action: utter_affirm
 
   - story: happy mood path
     steps:
