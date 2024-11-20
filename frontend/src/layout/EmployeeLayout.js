@@ -10,7 +10,7 @@ import AppTheme from '../shared-theme/AppTheme';
 
 const RootLayout = () => {
     const location = useLocation();
-    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(true);
     const shouldHideMenu = location.pathname !== '/user_profile'; 
 
     const handleToggleDrawer = () => {

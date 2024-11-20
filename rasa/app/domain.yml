@@ -19,6 +19,7 @@ intents:
   - provide_email
   - check_token_status
   - display_preferences
+  
 
 entities:
   - airport_code
@@ -120,13 +121,15 @@ slots:
     type: text
     influence_conversation: false
     mappings:
-      - type: from_text
+    - type: from_entity
+      entity: cabin_class
 
   hotel_rating:
     type: text
     influence_conversation: false
     mappings:
-      - type: from_text
+    - type: from_entity
+      entity: hotel_rating
 
 responses:
 
@@ -237,6 +240,7 @@ actions:
   - action_offer_restart
   - action_restart_conversation
   - action_fetch_user_preferences
+  - action_fetch_token
 
 forms:
   flight_search_form:

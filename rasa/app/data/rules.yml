@@ -110,3 +110,10 @@ rules:
       - intent: choose_trip_type
       - action: utter_ask_trip_type
       - action: action_listen
+
+  # - rule: Automatically fetch token
+  #   steps:
+  #     - intent: provide_email
+  #     - action: action_fetch_token
+  #     - slot_was_set:
+  #         - auth_token: null

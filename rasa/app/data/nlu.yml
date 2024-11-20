@@ -15,6 +15,9 @@ nlu:
   - intent: provide_email
     examples: |
       - alex@origtek.com.my
+      - ydk1421@gmail.com
+      - kai.y@graduate.utm.my
+      - iskandarhakimi@gmail.com
       - my email is [alex@origtek.com.my](email)
       - contact me at [alex@origtek.com.my](email)
       - [alex@origtek.com.my](email)

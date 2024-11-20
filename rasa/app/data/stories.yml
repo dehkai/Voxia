@@ -15,6 +15,18 @@ stories:
       - intent: display_preferences
       - action: action_fetch_user_preferences
 
+  # - story: Automatically fetch token
+  #   steps:
+  #     - intent: provide_email
+  #     - action: action_fetch_token
+  #     - slot_was_set:
+  #         - auth_token: null
+
+  - story: fetch user preferences
+    steps:
+      - intent: display_preferences
+      - action: action_fetch_user_preferences
+
   - story: generate PDF story
     steps:
       - intent: request_pdf

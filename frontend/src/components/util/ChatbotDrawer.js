@@ -19,6 +19,9 @@ import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
 import CloseTwoToneIcon from "@mui/icons-material/CloseTwoTone";
 import AppTheme from "../../shared-theme/AppTheme";
 
+const axios = require('axios');
+
+
 const ChatbotDrawer = ({ open, onClose }) => {
   const [messages, setMessages] = useState([
     { text: "Hello! How can I help you?", isBot: true, timestamp: new Date() },
@@ -49,6 +52,20 @@ const ChatbotDrawer = ({ open, onClose }) => {
   };
 
   const handleSendMessage = async () => {
+
+    const userData = JSON.parse(localStorage.getItem('user'));
+    console.log("User Data:", userData);
+    const email = userData?.email;
+
+    try {
+      await axios.post("http://localhost:5005/webhooks/rest/webhook", {
+        sender: email, // Using email as the sender ID
+        message: `My email is ${email}`,
+      });
+      console.log("Email successfully passed to Rasa.");
+    } catch (error) {
+      console.error("Error sending email to Rasa:", error.message);
+    }
     if (input.trim() === "") return;
 
     const userMessage = { text: input, isBot: false, timestamp: new Date() };
@@ -57,6 +74,8 @@ const ChatbotDrawer = ({ open, onClose }) => {
     setRows(1);
 
     try {
+
+
       const botResponses = await fetchChatbotResponse(input); // Call function directly
       botResponses.forEach((response) => {
         const botMessage = {
@@ -66,10 +85,14 @@ const ChatbotDrawer = ({ open, onClose }) => {
         };
         setMessages((prevMessages) => [...prevMessages, botMessage]);
       });
+
+
     } catch (error) {
       console.error("Error in Rasa interaction:", error);
     }
   };
+
+  
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

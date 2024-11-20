@@ -677,13 +677,43 @@ class ActionGeneratePDF(Action):
 #             print(f"Error fetching token: {e}")
 
 #         return []
+
+# class ActionFetchToken(Action):
+#     def name(self) -> str:
+#         return "action_fetch_token"
+
+#     async def run(self, dispatcher, tracker, domain):
+#         # Get the sender's email from the tracker
+#         email = tracker.sender_id  # Assume sender_id is the email passed from the MERN stack
+
+#         try:
+#             url = "http://localhost:5000/api/auth/fetch-token"
+#             headers = {"Content-Type": "application/json"}
+#             response = requests.post(url, json={"email": email}, headers=headers)
+
+#             if response.status_code == 200:
+#                 token = response.json().get("token")
+#                 if token:
+#                     dispatcher.utter_message(text=f"Token fetched successfully: {token}")
+#                     return [SlotSet("auth_token", token), SlotSet("user_email", email)]
+#                 else:
+#                     dispatcher.utter_message(text="Sorry, we couldn't retrieve your token.")
+#                     return []
+#             else:
+#                 dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+#                 return []
+#         except Exception as e:
+#             dispatcher.utter_message(text=f"Error fetching token: {str(e)}")
+#             return []
+            
 class ActionFetchAuthToken(Action):
     def name(self) -> str:
         return "action_fetch_auth_token"
 
     def run(self, dispatcher: CollectingDispatcher, tracker, domain):
         # Extract the provided email entity from user input
-        email = next(tracker.get_latest_entity_values("email"), None)
+        # email = next(tracker.get_latest_entity_values("email"), None)
+        email = tracker.sender_id
         
         # Ensure email slot is set
         if email:
