@@ -408,7 +408,7 @@ class ActionSearchHotels(Action):
     def name(self) -> Text:
         return "action_search_hotels"
 
-    def validate_hotel_params(self, city: str, check_in: str, check_out: str) -> bool:
+    def validate_hotel_params(self, city: str, check_in: str, check_out: str, hotel_rating: str) -> bool:
         """Validate hotel search parameters"""
         if not all([city, check_in, check_out]):
             return False
@@ -420,7 +420,7 @@ class ActionSearchHotels(Action):
         except ValueError:
             return False
 
-    def get_hotels_by_city(self, amadeus: Client, city_code: str) -> List[Dict[str, Any]]:
+    def get_hotels_by_city(self, amadeus: Client, city_code: str, hotel_rating: str) -> List[Dict[str, Any]]:
         """
         Get list of hotels in a city using Amadeus API
 
@@ -437,11 +437,11 @@ class ActionSearchHotels(Action):
                 cityCode=city_code,
                 radius=20,
                 radiusUnit='KM',
-                ratings='3,4,5'
+                ratings=hotel_rating
             )
 
             if response.data:
-                logger.info(f"Found {len(response.data)} hotels in {city_code}")
+                logger.info(f"Found {len(response.data)} hotels in {city_code} with rating {hotel_rating}")
                 return response.data
             return []
 
@@ -528,8 +528,9 @@ class ActionSearchHotels(Action):
         city_code = tracker.get_slot("city")
         check_in = tracker.get_slot("check_in")
         check_out = tracker.get_slot("check_out")
+        hotel_rating = tracker.get_slot("hotel_rating") or "3,4,5"
 
-        if not self.validate_hotel_params(city_code, check_in, check_out):
+        if not self.validate_hotel_params(city_code, check_in, check_out, hotel_rating):
             dispatcher.utter_message(text="Please provide valid city, check-in, and check-out dates.")
             return []
 
@@ -537,7 +538,7 @@ class ActionSearchHotels(Action):
             logger.info(f"Starting hotel search in {city_code} from {check_in} to {check_out}")
             amadeus = AmadeusClient().amadeus
 
-            hotels_in_city = self.get_hotels_by_city(amadeus, city_code)
+            hotels_in_city = self.get_hotels_by_city(amadeus, city_code, hotel_rating)
             if not hotels_in_city:
                 dispatcher.utter_message(text=f"Sorry, no hotels found in {city_code}.")
                 return []
