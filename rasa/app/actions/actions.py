@@ -48,12 +48,6 @@ class ActionFetchUserPreferences(Action):
                 cabin_class = preferences.get("cabinClass", "No cabin class preference set.")
                 hotel_rating = preferences.get("hotelRating", "No hotel rating preference set.")
 
-                # Inform the user and set slots for the preferences
-                dispatcher.utter_message(
-                    text=f"Preferences retrieved successfully!\n"
-                         f"Cabin Class: {cabin_class}\n"
-                         f"Hotel Rating: {hotel_rating} Star"
-                )
                 return [
                     SlotSet("cabin_class", cabin_class),
                     SlotSet("hotel_rating", hotel_rating),

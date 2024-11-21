@@ -6,14 +6,18 @@ stories:
       - intent: check_token_status
       - action: action_check_token_status
 
-  - story: display user preferences after fetching token
+  - story: fetch token and preferences silently
     steps:
       - intent: provide_email
       - action: action_fetch_auth_token
       - slot_was_set:
           - auth_token: null
-      - intent: display_preferences
       - action: action_fetch_user_preferences
+
+  - story: display preferences on request
+    steps:
+      - intent: display_preferences
+      - action: utter_display_preferences
 
   - story: generate PDF story
     steps:
