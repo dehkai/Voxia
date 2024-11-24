@@ -120,13 +120,13 @@ slots:
     type: text
     influence_conversation: false
     mappings:
-      - type: from_text
+      - type: custom
 
   hotel_rating:
     type: text
     influence_conversation: false
     mappings:
-      - type: from_text
+      - type: custom
 
 responses:
 
@@ -140,6 +140,12 @@ responses:
   
   utter_confirm_restart:
     - text: "Alright, let's start fresh! How can I help you today?"
+
+  utter_display_preferences:
+    - text: |
+        Here are your preferences:
+        - Cabin Class: {cabin_class}
+        - Hotel Rating: {hotel_rating} Star
 
   utter_no_token: 
     - text: "No token has been fetched yet."

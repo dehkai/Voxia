@@ -48,12 +48,6 @@ class ActionFetchUserPreferences(Action):
                 cabin_class = preferences.get("cabinClass", "No cabin class preference set.")
                 hotel_rating = preferences.get("hotelRating", "No hotel rating preference set.")
 
-                # Inform the user and set slots for the preferences
-                dispatcher.utter_message(
-                    text=f"Preferences retrieved successfully!\n"
-                         f"Cabin Class: {cabin_class}\n"
-                         f"Hotel Rating: {hotel_rating} Star"
-                )
                 return [
                     SlotSet("cabin_class", cabin_class),
                     SlotSet("hotel_rating", hotel_rating),
@@ -66,27 +60,27 @@ class ActionFetchUserPreferences(Action):
             return []
 
 
-class ActionOfferRestart(Action):
-    """Action to offer conversation restart after flight search"""
+# class ActionOfferRestart(Action):
+#     """Action to offer conversation restart after flight search"""
     
-    def name(self) -> Text:
-        return "action_offer_restart"
+#     def name(self) -> Text:
+#         return "action_offer_restart"
         
-    async def run(
-        self,
-        dispatcher: CollectingDispatcher,
-        tracker: Tracker,
-        domain: Dict[Text, Any]
-    ) -> List[Dict[Text, Any]]:
-        # Offer restart with buttons
-        dispatcher.utter_message(
-            text="Would you like to start a new search?",
-            buttons=[
-                {"title": "Yes, start new search", "payload": "/restart_conversation"},
-                {"title": "No, end chat", "payload": "/goodbye"}
-            ]
-        )
-        return []
+#     async def run(
+#         self,
+#         dispatcher: CollectingDispatcher,
+#         tracker: Tracker,
+#         domain: Dict[Text, Any]
+#     ) -> List[Dict[Text, Any]]:
+#         # Offer restart with buttons
+#         dispatcher.utter_message(
+#             text="Would you like to start a new search?",
+#             buttons=[
+#                 {"title": "Yes, start new search", "payload": "/restart_conversation"},
+#                 {"title": "No, end chat", "payload": "/goodbye"}
+#             ]
+#         )
+#         return []
 
 class ActionRestartConversation(Action):
     """Action to handle conversation restart"""
@@ -207,7 +201,7 @@ class ActionSearchFlights(Action):
     def name(self) -> Text:
         return "action_search_flights"
         
-    def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single") -> bool:
+    def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single", cabin_class: str = None) -> bool:
         """Validate flight search parameters"""
         if not all([origin, destination, departure_date]):
             return False
@@ -220,10 +214,11 @@ class ActionSearchFlights(Action):
             if return_date and trip_type == "round":
                 return_d = datetime.strptime(return_date, '%Y-%m-%d').date()
                 return return_d > departure and departure >= current_date
+            
             return departure >= current_date
         except ValueError:
             return False
-    
+
     @staticmethod
     def format_duration(duration: str) -> str:
         """Convert ISO 8601 duration (e.g., 'PT4H55M') to a readable format like '4 hours 55 minutes'."""
@@ -243,7 +238,7 @@ class ActionSearchFlights(Action):
         
         return ' '.join(formatted_duration)
 
-    def format_flight_details(self, offer: Dict[str, Any],carriers: Dict[str, str]) -> str:
+    def format_flight_details(self, offer: Dict[str, Any], carriers: Dict[str, str]) -> str:
         """Format flight offer details for display"""
         try:
             price = offer['price']['total']
@@ -257,9 +252,17 @@ class ActionSearchFlights(Action):
             arrival_time = datetime.fromisoformat(segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
 
             formatted_duration = self.format_duration(itinerary['duration'])
-            
+
+            # Extract cabin class from travelerPricings
+            traveler_pricings = offer.get("travelerPricings", [])
+            cabin_class = (
+                traveler_pricings[0]['fareDetailsBySegment'][0]['cabin']
+                if traveler_pricings else "N/A"
+            )
+
             return (
                 f"🛩️ Airline: {airline_name}\n"
+                f"💺 Cabin Class: {cabin_class.capitalize()}\n"
                 f"🛫 Flight: {segment['carrierCode']}{segment['number']}\n"
                 f"💰 Price: RM {price}\n"
                 f"⏱️ Duration: {formatted_duration}\n"
@@ -271,7 +274,8 @@ class ActionSearchFlights(Action):
             logger.error(f"Error formatting flight details: {str(e)}")
             return "Error formatting flight details"
 
-    async def search_flights(self, amadeus, origin: str, destination: str, date: str) -> List[str]:
+
+    async def search_flights(self, amadeus, origin: str, destination: str, date: str, cabin_class: str) -> List[str]:
         """Search flights for a given route and format the results"""
         try:
             response = amadeus.shopping.flight_offers_search.get(
@@ -280,7 +284,8 @@ class ActionSearchFlights(Action):
                 departureDate=date,
                 adults=1,
                 max=3,
-                currencyCode="MYR"
+                currencyCode="MYR",
+                travelClass=cabin_class.upper()
             )
             
             if response.data:
@@ -303,13 +308,14 @@ class ActionSearchFlights(Action):
         destination = tracker.get_slot("destination")
         departure_date = tracker.get_slot("departure_date")
         return_date = tracker.get_slot("return_date") if trip_type == "round" else None
+        cabin_class = tracker.get_slot("cabin_class")
         
         # Log the received values
         logger.info(f"Received values - Trip Type: {trip_type}, Origin: {origin}, Destination: {destination}, "
-                   f"Departure: {departure_date}, Return: {return_date}")
+                   f"Departure: {departure_date}, Return: {return_date}, Cabin Class: {cabin_class}")
         
         # Validate parameters
-        if not self.validate_flight_params(origin, destination, departure_date, return_date, trip_type):
+        if not self.validate_flight_params(origin, destination, departure_date, return_date, trip_type, cabin_class):
             dispatcher.utter_message(
                 text="Please provide valid flight details."
             )
@@ -321,7 +327,7 @@ class ActionSearchFlights(Action):
             amadeus = AmadeusClient().amadeus
             
             # Search outbound flights
-            outbound_details = await self.search_flights(amadeus, origin, destination, departure_date)
+            outbound_details = await self.search_flights(amadeus, origin, destination, departure_date, cabin_class)
             
             if outbound_details:
                 # For single trip, just show outbound flights
@@ -337,7 +343,7 @@ class ActionSearchFlights(Action):
                 # For round trip, search and show both outbound and return flights
                 elif trip_type == "round" and return_date:
                     # Search return flights
-                    return_details = await self.search_flights(amadeus, destination, origin, return_date)
+                    return_details = await self.search_flights(amadeus, destination, origin, return_date, cabin_class)
                     
                     if return_details:
                         # First show outbound options
@@ -378,22 +384,17 @@ class ActionSearchFlights(Action):
                 
         except ResponseError as error:
             logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
-            # dispatcher.utter_message(
-            #     text="Sorry, there was an error searching for flights. Please try again later."
-            # )
             return [
                     SlotSet("flights_found", False),
                     ActionExecuted("action_offer_restart")
                 ]
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
-            # dispatcher.utter_message(
-            #     text="An unexpected error occurred. Please try again later."
-            # )
             return [
                     SlotSet("flights_found", False),
                     ActionExecuted("action_offer_restart")
                 ]
+
     
 class ActionSearchHotels(Action):
     """Rasa action for searching hotels using Amadeus API"""
@@ -401,7 +402,7 @@ class ActionSearchHotels(Action):
     def name(self) -> Text:
         return "action_search_hotels"
 
-    def validate_hotel_params(self, city: str, check_in: str, check_out: str) -> bool:
+    def validate_hotel_params(self, city: str, check_in: str, check_out: str, hotel_rating: str) -> bool:
         """Validate hotel search parameters"""
         if not all([city, check_in, check_out]):
             return False
@@ -413,7 +414,7 @@ class ActionSearchHotels(Action):
         except ValueError:
             return False
 
-    def get_hotels_by_city(self, amadeus: Client, city_code: str) -> List[Dict[str, Any]]:
+    def get_hotels_by_city(self, amadeus: Client, city_code: str, hotel_rating: str) -> List[Dict[str, Any]]:
         """
         Get list of hotels in a city using Amadeus API
 
@@ -430,11 +431,11 @@ class ActionSearchHotels(Action):
                 cityCode=city_code,
                 radius=20,
                 radiusUnit='KM',
-                ratings='3,4,5'
+                ratings=hotel_rating
             )
 
             if response.data:
-                logger.info(f"Found {len(response.data)} hotels in {city_code}")
+                logger.info(f"Found {len(response.data)} hotels in {city_code} with rating {hotel_rating}")
                 return response.data
             return []
 
@@ -521,8 +522,9 @@ class ActionSearchHotels(Action):
         city_code = tracker.get_slot("city")
         check_in = tracker.get_slot("check_in")
         check_out = tracker.get_slot("check_out")
+        hotel_rating = tracker.get_slot("hotel_rating") or "3,4,5"
 
-        if not self.validate_hotel_params(city_code, check_in, check_out):
+        if not self.validate_hotel_params(city_code, check_in, check_out, hotel_rating):
             dispatcher.utter_message(text="Please provide valid city, check-in, and check-out dates.")
             return []
 
@@ -530,7 +532,7 @@ class ActionSearchHotels(Action):
             logger.info(f"Starting hotel search in {city_code} from {check_in} to {check_out}")
             amadeus = AmadeusClient().amadeus
 
-            hotels_in_city = self.get_hotels_by_city(amadeus, city_code)
+            hotels_in_city = self.get_hotels_by_city(amadeus, city_code, hotel_rating)
             if not hotels_in_city:
                 dispatcher.utter_message(text=f"Sorry, no hotels found in {city_code}.")
                 return []
