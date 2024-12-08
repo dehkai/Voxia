@@ -432,32 +432,44 @@ class ActionSearchFlights(Action):
         try:
             price = offer['price']['total']
             itinerary = offer['itineraries'][0]
-            segment = itinerary['segments'][0]
+            segments = itinerary['segments']
+            
+            # Get first segment and last segment for proper origin/destination display
+            first_segment = segments[0]
+            last_segment = segments[-1]
 
-            carrier_code = segment['carrierCode']
+            carrier_code = first_segment['carrierCode']
             airline_name = carriers.get(carrier_code, carrier_code)
             
-            departure_time = datetime.fromisoformat(segment['departure']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
-            arrival_time = datetime.fromisoformat(segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
+            departure_time = datetime.fromisoformat(first_segment['departure']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
+            final_arrival_time = datetime.fromisoformat(last_segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
 
             formatted_duration = self.format_duration(itinerary['duration'])
-
-            # Extract cabin class from travelerPricings
-            traveler_pricings = offer.get("travelerPricings", [])
-            cabin_class = (
-                traveler_pricings[0]['fareDetailsBySegment'][0]['cabin']
-                if traveler_pricings else "N/A"
-            )
-
+            
+            # Format layover information if there are multiple segments
+            layover_info = ""
+            if len(segments) > 1:
+                layovers = []
+                for i in range(len(segments) - 1):
+                    current_arrival = datetime.fromisoformat(segments[i]['arrival']['at'].replace('Z', ''))
+                    next_departure = datetime.fromisoformat(segments[i + 1]['departure']['at'].replace('Z', ''))
+                    layover_duration = next_departure - current_arrival
+                    layover_hours = int(layover_duration.total_seconds() // 3600)
+                    layover_minutes = int((layover_duration.total_seconds() % 3600) // 60)
+                    
+                    layovers.append(f"{segments[i]['arrival']['iataCode']} ({layover_hours}h {layover_minutes}m)")
+                
+                layover_info = f"\n🔄 Layovers: {' → '.join(layovers)}"
+            
             return (
                 f"🛩️ Airline: {airline_name}\n"
-                f"💺 Cabin Class: {cabin_class.capitalize()}\n"
-                f"🛫 Flight: {segment['carrierCode']}{segment['number']}\n"
+                f"🛫 Flight: {first_segment['carrierCode']}{first_segment['number']}\n"
                 f"💰 Price: RM {price}\n"
                 f"⏱️ Duration: {formatted_duration}\n"
                 f"🛫 Departure: {departure_time}\n"
-                f"🛬 Arrival: {arrival_time}\n"
-                f"📍 From: {segment['departure']['iataCode']} to {segment['arrival']['iataCode']}"
+                f"🛬 Arrival: {final_arrival_time}\n"
+                f"📍 From: {first_segment['departure']['iataCode']} to {last_segment['arrival']['iataCode']}"
+                f"{layover_info}"
             )
         except Exception as e:
             logger.error(f"Error formatting flight details: {str(e)}")
