@@ -445,6 +445,12 @@ class ActionSearchFlights(Action):
             final_arrival_time = datetime.fromisoformat(last_segment['arrival']['at'].replace('Z', '')).strftime('%Y-%m-%d %H:%M')
 
             formatted_duration = self.format_duration(itinerary['duration'])
+
+            traveler_pricings = offer.get("travelerPricings", [])
+            cabin_class = (
+                traveler_pricings[0]['fareDetailsBySegment'][0]['cabin']
+                if traveler_pricings else "N/A"
+            )
             
             # Format layover information if there are multiple segments
             layover_info = ""
@@ -463,6 +469,7 @@ class ActionSearchFlights(Action):
             
             return (
                 f"🛩️ Airline: {airline_name}\n"
+                f"💺 Cabin Class: {cabin_class.capitalize()}\n"
                 f"🛫 Flight: {first_segment['carrierCode']}{first_segment['number']}\n"
                 f"💰 Price: RM {price}\n"
                 f"⏱️ Duration: {formatted_duration}\n"
