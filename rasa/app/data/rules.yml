@@ -2,6 +2,35 @@ version: "3.1"
 
 rules:
 
+  - rule: Offer restart after flight search failure
+    condition:
+      - slot_was_set:
+          - flights_found: false
+    steps:
+      - action: utter_no_flights_found
+      - action: action_offer_restart
+      - action: action_listen
+
+  - rule: Offer restart after successful flight search
+    condition:
+      - slot_was_set:
+          - flights_found: true
+    steps:
+      - action: action_offer_restart
+      - action: action_listen
+
+  - rule: Handle conversation restart
+    steps:
+      - intent: restart_conversation
+      - action: action_restart_conversation
+      - action: action_listen
+
+  - rule: Handle restart decline with goodbye
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye
+      - action: action_listen
+
   - rule: PDF generation rule
     steps:
       - intent: request_pdf
@@ -20,7 +49,8 @@ rules:
       - active_loop: null
       - action: action_search_flights
       - slot_was_set:
-          - flights_found: true
+        - flights_found: true
+      - action: action_mark_flight_search_complete
       - action: action_listen
 
   - rule: Submit flight search form and handle failure
@@ -38,6 +68,7 @@ rules:
   - rule: Activate hotel search form
     steps:
       - intent: search_hotels
+      - action: action_reset_hotel_form
       - action: hotel_search_form
       - active_loop: hotel_search_form
 
@@ -48,6 +79,14 @@ rules:
       - action: hotel_search_form
       - active_loop: null
       - action: action_search_hotels
+      - action: action_mark_hotel_search_complete
+      - action: action_listen
+
+  - rule: Complete hotel search
+    condition:
+      - slot_was_set:
+          - hotel_search_completed: true
+    steps:
       - action: action_listen
 
   - rule: Say goodbye anytime the user says goodbye

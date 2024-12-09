@@ -1,12 +1,38 @@
 version: "3.1"
 
 nlu:
+  - intent: restart_conversation
+    examples: |
+      - restart
+      - start over
+      - begin again
+      - reset
+      - start fresh
+      - new conversation
+      - start a new chat
+      - let's start over
+      
   - intent: provide_email
     examples: |
       - alex@origtek.com.my
       - my email is [alex@origtek.com.my](email)
       - contact me at [alex@origtek.com.my](email)
       - [alex@origtek.com.my](email)
+      - My email is [john.doe@example.com](email)
+      - You can reach me at [contact@domain.com](email)
+      - Use [jane.doe@workplace.com](email) for authentication
+      - My email address is [hello@company.org](email)
+      - Contact me via [support@business.net](email)
+      - Here's my email: [info@site.io](email)
+      - Send details to [feedback@domain.co.uk](email)
+      - I use [alex@origtek.com.my](email) as my email
+      - Try [example.email@domain.com](email)
+      - Please use [user123@testing.net](email)
+      - The email is [abc.def@xyz.com](email)
+      - It's [someone@service.org](email)
+      - Reach out to [me@myplace.com](email)
+      - [test.user@site.com](email) is the one
+      - [admin@company.gov](email) is my email
 
   - intent: check_token_status
     examples: |
@@ -21,6 +47,30 @@ nlu:
       - I need a PDF report
       - Can you create a PDF?
       - Generate a PDF with my data
+
+  - intent: display_preferences
+    examples: |
+      - Show me my preferences
+      - What are my preferences?
+      - Display my travel preferences
+      - Can you show my saved preferences?
+      - Tell me my flight and hotel preferences
+      - Show my saved preferences
+      - What travel preferences do I have?
+      - Can you display my preferences?
+      - What cabin class and hotel rating do I prefer?
+      - Tell me what preferences are saved for me
+      - I want to see my preferences
+      - Show my travel preferences
+      - Can you let me know my saved preferences?
+      - What are my saved preferences?
+      - Tell me the preferences I have saved
+      - Show me what I like for flights and hotels
+      - What preferences are stored for me?
+      - Can you display the preferences you have for me?
+      - Show me my stored preferences
+      - I'd like to know my preferences
+
   - intent: greet
     examples: |
       - hey
@@ -182,6 +232,10 @@ nlu:
   - regex: date
     examples: |
       - [0-9]{4}-[0-9]{2}-[0-9]{2}
+
+  - regex: email
+    examples: |
+      - ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$
 
   - lookup: airport_code
     examples: |

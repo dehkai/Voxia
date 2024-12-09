@@ -6,12 +6,18 @@ stories:
       - intent: check_token_status
       - action: action_check_token_status
 
-  - story: provide email and fetch token
+  - story: fetch token and preferences silently
     steps:
       - intent: provide_email
       - action: action_fetch_auth_token
       - slot_was_set:
           - auth_token: null
+      - action: action_fetch_user_preferences
+
+  - story: display preferences on request
+    steps:
+      - intent: display_preferences
+      - action: utter_display_preferences
 
   - story: generate PDF story
     steps:
@@ -22,7 +28,6 @@ stories:
     steps:
     - intent: greet
     - action: utter_greet
-    - action: utter_affirm
 
   - story: happy mood path
     steps:
@@ -150,3 +155,71 @@ stories:
         - trip_type: "round"
     - action: flight_search_form
     - active_loop: flight_search_form
+
+  - story: flight to hotel transition
+    steps:
+    # Flight search part
+    - intent: search_flights
+    - action: flight_search_form
+    - active_loop: flight_search_form
+    # Flight form filling
+    - intent: single_trip  # or round_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "single"  # or "round"
+    - intent: provide_location
+      entities:
+        - airport_code: "KUL"
+    - slot_was_set:
+        - origin: "KUL"
+    - intent: provide_location
+      entities:
+        - airport_code: "SIN"
+    - slot_was_set:
+        - destination: "SIN"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-15"
+    - slot_was_set:
+        - departure_date: "2024-05-15"
+    # Complete flight search
+    - action: flight_search_form
+    - active_loop: null
+    - action: action_search_flights
+    - slot_was_set:
+        - flights_found: true
+    - action: action_mark_flight_search_complete
+    - slot_was_set:
+        - flight_search_completed: true
+    # Transition to hotel search
+    - intent: search_hotels
+    - action: action_reset_hotel_form
+    - action: hotel_search_form
+    - active_loop: hotel_search_form
+    # Hotel form filling
+    - intent: provide_location
+      entities:
+        - city_code: "SIN"
+    - slot_was_set:
+        - city: "SIN"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-15"
+    - slot_was_set:
+        - check_in: "2024-05-15"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-20"
+    - slot_was_set:
+        - check_out: "2024-05-20"
+    # Complete hotel search
+    - action: hotel_search_form
+    - active_loop: null
+    - action: action_search_hotels
+    - action: action_mark_hotel_search_complete
+    - slot_was_set:
+        - hotel_search_completed: true
+    # Optionally save the request
+    - intent: save_travel_request
+    - action: action_save_travel_request
+    - action: action_listen

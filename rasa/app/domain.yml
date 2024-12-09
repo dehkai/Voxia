@@ -18,6 +18,8 @@ intents:
   - request_pdf
   - provide_email
   - check_token_status
+  - display_preferences
+  - save_travel_request
 
 entities:
   - airport_code
@@ -115,7 +117,65 @@ slots:
     mappings:
       - type: custom
 
+  cabin_class:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+
+  hotel_rating:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+
+  flight_search_completed:
+    type: bool
+    influence_conversation: true
+    mappings:
+      - type: custom
+    initial_value: false
+
+  hotel_search_completed:
+    type: bool
+    influence_conversation: true
+    mappings:
+      - type: custom
+    initial_value: false
+
+  travel_request_id:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+
 responses:
+
+  utter_confirm_save:
+    - text: "Would you like to save your travel request?"
+
+  utter_search_complete:
+    - text: "I've completed the search for you."
+
+  utter_save_confirmed:
+    - text: "Your travel request has been saved successfully."
+
+  utter_restart_offer:
+    - text: "Would you like to start a new conversation?"
+      buttons:
+      - title: "Yes, start over"
+        payload: "/restart_conversation"
+      - title: "No, end chat"
+        payload: "/goodbye"
+  
+  utter_confirm_restart:
+    - text: "Alright, let's start fresh! How can I help you today?"
+
+  utter_display_preferences:
+    - text: |
+        Here are your preferences:
+        - Cabin Class: {cabin_class}
+        - Hotel Rating: {hotel_rating} Star
 
   utter_no_token: 
     - text: "No token has been fetched yet."
@@ -193,8 +253,10 @@ responses:
   
   utter_ask_for_email:
     - text: "Please provide your email to fetch the authentication token."
+
   utter_token_received:
     - text: "Your authentication token has been successfully fetched and stored."
+
 
 actions:
   - action_search_flights
@@ -208,6 +270,13 @@ actions:
   - action_generate_pdf
   - action_fetch_auth_token
   - action_check_token_status
+  - action_offer_restart
+  - action_restart_conversation
+  - action_fetch_user_preferences
+  - action_save_travel_request
+  - action_mark_flight_search_complete
+  - action_mark_hotel_search_complete
+  - action_reset_hotel_form
 
 forms:
   flight_search_form:
