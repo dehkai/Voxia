@@ -379,13 +379,21 @@ class ActionSetTripType(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        # Get the trip type from the intent name
-        if tracker.get_intent_of_latest_message() == "single_trip":
+        intent = tracker.latest_message.get('intent', {}).get('name')
+        
+        if intent == "single_trip":
             trip_type = "single"
-        else:
+        elif intent == "round_trip":
             trip_type = "round"
-            
-        return [SlotSet("trip_type", trip_type)]
+        else:
+            return []
+        
+        # Set the trip type and move to next slot
+        return [
+            SlotSet("trip_type", trip_type),
+            SlotSet("requested_slot", "origin")  # Move to asking for origin
+        ]
+
 class ActionSearchFlights(Action):
     def name(self) -> Text:
         return "action_search_flights"
@@ -427,7 +435,7 @@ class ActionSearchFlights(Action):
         
         return ' '.join(formatted_duration)
 
-    def format_flight_details(self, offer: Dict[str, Any], carriers: Dict[str, str]) -> str:
+    def format_flight_details(self, offer: Dict[Text, Any], carriers: Dict[Text, str]) -> str:
         """Format flight offer details for display"""
         try:
             price = offer['price']['total']
@@ -498,8 +506,10 @@ class ActionSearchFlights(Action):
             
             if response.data:
                 carriers = response.result['dictionaries']['carriers']
-                return [self.format_flight_details(offer, carriers) for offer in response.data[:3]]
+                flight_details = [self.format_flight_details(offer, carriers) for offer in response.data[:3]]
+                return flight_details
             return []
+
         except Exception as e:
             logger.error(f"Error searching flights: {str(e)}")
             return []
@@ -540,13 +550,17 @@ class ActionSearchFlights(Action):
             if outbound_details:
                 # For single trip, just show outbound flights
                 if trip_type == "single":
-                    message = f"✈️ Outbound flights from {origin} to {destination}:\n\n"
-                    message += "\n\n".join(outbound_details)
-                    dispatcher.utter_message(text=message)
+                    # Display options message once
+                    dispatcher.utter_message(text="Here are your flight options. Please select one by saying 'select flight 1', 'select flight 2', or 'select flight 3':")
+                    
+                    # Display numbered options
+                    for idx, flight in enumerate(outbound_details, 1):
+                        dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                    
                     return [
                         SlotSet("flights_found", True),
-                        ActionExecuted("action_offer_restart")
-                    ]                
+                        SlotSet("flight_options", outbound_details)
+                    ]
 
                 # For round trip, search and show both outbound and return flights
                 elif trip_type == "round" and return_date:
@@ -622,7 +636,7 @@ class ActionSearchHotels(Action):
         except ValueError:
             return False
 
-    def get_hotels_by_city(self, amadeus: Client, city_code: str, hotel_rating: str) -> List[Dict[str, Any]]:
+    def get_hotels_by_city(self, amadeus: Client, city_code: str, hotel_rating: str) -> List[Dict[Text, Any]]:
         """
         Get list of hotels in a city using Amadeus API
 
@@ -654,7 +668,7 @@ class ActionSearchHotels(Action):
             logger.error(f"Unexpected error in get_hotels_by_city: {str(e)}")
             raise
 
-    def get_hotel_offers(self, amadeus: Client, hotel_ids: List[str], check_in: str, check_out: str) -> List[Dict[str, Any]]:
+    def get_hotel_offers(self, amadeus: Client, hotel_ids: List[str], check_in: str, check_out: str) -> List[Dict[Text, Any]]:
         """
         Get hotel offers for specified hotels
 
@@ -691,7 +705,7 @@ class ActionSearchHotels(Action):
 
         return valid_offers
 
-    def format_hotel_details(self, hotel: Dict[str, Any], rating: str) -> str:
+    def format_hotel_details(self, hotel: Dict[Text, Any], rating: str) -> str:
         """Format hotel offer details for display, with safeguards for list structures."""
         try:
             offers = hotel.get('offers', [])
@@ -782,6 +796,20 @@ class ActionSearchHotels(Action):
 class ValidateFlightSearchForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_flight_search_form"
+
+    async def validate_trip_type(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> Dict[Text, Any]:
+        intent = tracker.latest_message['intent'].get('name')
+        if intent == "single_trip":
+            return {"trip_type": "single"}
+        elif intent == "round_trip":
+            return {"trip_type": "round"}
+        return {"trip_type": None}
 
     def validate_origin(
         self,
@@ -933,3 +961,56 @@ class ActionCheckTokenStatus(Action):
             dispatcher.utter_message(text="No authentication token is available.")
         
         return []
+
+class ActionSelectFlight(Action):
+    def name(self) -> Text:
+        return "action_select_flight"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        # Get the message text to extract the flight option number
+        message = tracker.latest_message.get('text', '').lower()
+        flight_number = None
+        
+        # Extract the flight number from the message
+        if '1' in message or 'first' in message:
+            flight_number = 0
+        elif '2' in message or 'second' in message:
+            flight_number = 1
+        elif '3' in message or 'third' in message:
+            flight_number = 2
+
+        # Get stored flight details from previous search
+        flight_options = tracker.get_slot("flight_options")
+        
+        if not flight_options or flight_number is None:
+            dispatcher.utter_message(text="Sorry, I couldn't find the flight option you're referring to.")
+            return []
+
+        try:
+            selected_flight = flight_options[flight_number]
+            
+            # Format confirmation message
+            confirmation_message = (
+                f"✈️ You've selected this flight:\n\n"
+                f"{selected_flight}\n\n"
+                f"Would you like to confirm this selection?"
+            )
+            
+            dispatcher.utter_message(
+                text=confirmation_message,
+                buttons=[
+                    {"title": "Yes, confirm", "payload": "/confirm_flight"},
+                    {"title": "No, choose different flight", "payload": "/deny"}
+                ]
+            )
+            
+            return [SlotSet("selected_flight", selected_flight)]
+            
+        except (IndexError, TypeError):
+            dispatcher.utter_message(text="Sorry, that flight option is not available.")
+            return []

@@ -21,7 +21,12 @@ import AppTheme from "../../shared-theme/AppTheme";
 
 const ChatbotDrawer = ({ open, onClose }) => {
   const [messages, setMessages] = useState([
-    { text: "Hello! How can I help you?", isBot: true, timestamp: new Date() },
+    { 
+      text: "Hello! How can I help you?", 
+      isBot: true, 
+      timestamp: new Date(),
+      buttons: [] 
+    },
   ]);
   const [input, setInput] = useState("");
   const [rows, setRows] = useState(1);
@@ -57,12 +62,13 @@ const ChatbotDrawer = ({ open, onClose }) => {
     setRows(1);
 
     try {
-      const botResponses = await fetchChatbotResponse(input); // Call function directly
+      const botResponses = await fetchChatbotResponse(input);
       botResponses.forEach((response) => {
         const botMessage = {
           text: response.text,
           isBot: true,
           timestamp: new Date(),
+          buttons: response.buttons || []
         };
         setMessages((prevMessages) => [...prevMessages, botMessage]);
       });
@@ -207,6 +213,36 @@ const ChatbotDrawer = ({ open, onClose }) => {
             <Typography component="span" sx={{ whiteSpace: "pre-wrap" }}>
                 {msg.text}
             </Typography>
+            {msg.buttons && msg.buttons.length > 0 && (
+                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {msg.buttons.map((button, idx) => (
+                        <Button
+                            key={idx}
+                            variant="contained"
+                            size="small"
+                            onClick={() => {
+                                const userMessage = { 
+                                    text: button.title, 
+                                    isBot: false, 
+                                    timestamp: new Date() 
+                                };
+                                setMessages(prev => [...prev, userMessage]);
+                                handleSendMessage(button.payload);
+                            }}
+                            sx={{
+                                backgroundColor: 'white',
+                                color: 'primary.main',
+                                '&:hover': {
+                                    backgroundColor: 'primary.light',
+                                    color: 'white'
+                                }
+                            }}
+                        >
+                            {button.title}
+                        </Button>
+                    ))}
+                </Box>
+            )}
         </Box>
         
         {/* Timestamp aligned to the right for both bot and user */}

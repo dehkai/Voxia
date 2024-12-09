@@ -3,23 +3,26 @@ version: "3.1"
 intents:
   - greet
   - goodbye
+  - restart_conversation
+  - search_flights
+  - search_hotels
+  - provide_email
+  - single_trip
+  - round_trip
+  - provide_location
+  - provide_travel_dates
+  - provide_return_date
+  - display_preferences
+  - request_pdf
+  - bot_challenge
+  - choose_trip_type
+  - select_flight
+  - confirm_flight
+  - save_travel_request
   - affirm
   - deny
   - mood_unhappy
-  - bot_challenge
-  - search_flights
-  - search_hotels
-  - provide_travel_dates
-  - provide_location
-  - choose_trip_type
-  - single_trip
-  - round_trip
-  - provide_return_date
-  - request_pdf
-  - provide_email
   - check_token_status
-  - display_preferences
-  - save_travel_request
 
 entities:
   - airport_code
@@ -59,18 +62,11 @@ slots:
     influence_conversation: true
 
   trip_type:
-    type: categorical
-    values:
-      - single
-      - round
-    mappings:
-      - type: from_trigger_intent
-        intent: single_trip
-        value: single
-      - type: from_trigger_intent
-        intent: round_trip
-        value: round
+    type: text
     influence_conversation: true
+    mappings:
+      - type: custom
+        action: action_set_trip_type
   
   city:
     type: text
@@ -149,6 +145,18 @@ slots:
     mappings:
       - type: custom
 
+  selected_flight:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
+
+  flight_options:
+    type: list
+    influence_conversation: true
+    mappings:
+      - type: custom
+
 responses:
 
   utter_confirm_save:
@@ -183,7 +191,7 @@ responses:
     - text: "Your authentication token is: {token}"
 
   utter_greet:
-    - text: "Hey! How can I help you with your travel plans today?"
+    - text: "Hello! How can I help you today?"
 
   utter_cheer_up:
   - text: "Here is something to cheer you up:"
@@ -261,7 +269,6 @@ responses:
 actions:
   - action_search_flights
   - action_search_hotels
-  - validate_flight_search_form
   - choose_trip_type
   - single_trip
   - round_trip
@@ -277,6 +284,8 @@ actions:
   - action_mark_flight_search_complete
   - action_mark_hotel_search_complete
   - action_reset_hotel_form
+  - action_select_flight
+  - validate_flight_search_form
 
 forms:
   flight_search_form:

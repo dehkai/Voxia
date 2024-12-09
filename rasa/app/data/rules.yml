@@ -99,24 +99,36 @@ rules:
       - intent: bot_challenge
       - action: utter_iamabot
 
-  - rule: Set single trip type
+  - rule: Set single trip type and continue form
+    condition:
+      - active_loop: flight_search_form
     steps:
       - intent: single_trip
       - action: action_set_trip_type
       - slot_was_set:
           - trip_type: "single"
-      - action: action_listen
+      - action: flight_search_form
+      - active_loop: flight_search_form
 
-  - rule: Set round trip type
+  - rule: Set round trip type and continue form
+    condition:
+      - active_loop: flight_search_form
     steps:
       - intent: round_trip
       - action: action_set_trip_type
       - slot_was_set:
           - trip_type: "round"
-      - action: action_listen
+      - action: flight_search_form
+      - active_loop: flight_search_form
 
   - rule: Handle trip type selection
     steps:
       - intent: choose_trip_type
       - action: utter_ask_trip_type
       - action: action_listen
+
+  - rule: Handle flight selection
+    steps:
+    - intent: select_flight
+    - action: action_select_flight
+    - action: action_listen
