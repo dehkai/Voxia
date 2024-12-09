@@ -19,6 +19,7 @@ intents:
   - provide_email
   - check_token_status
   - display_preferences
+  - save_travel_request
 
 entities:
   - airport_code
@@ -128,7 +129,36 @@ slots:
     mappings:
       - type: custom
 
+  flight_search_completed:
+    type: bool
+    influence_conversation: true
+    mappings:
+      - type: custom
+    initial_value: false
+
+  hotel_search_completed:
+    type: bool
+    influence_conversation: true
+    mappings:
+      - type: custom
+    initial_value: false
+
+  travel_request_id:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: custom
+
 responses:
+
+  utter_confirm_save:
+    - text: "Would you like to save your travel request?"
+
+  utter_search_complete:
+    - text: "I've completed the search for you."
+
+  utter_save_confirmed:
+    - text: "Your travel request has been saved successfully."
 
   utter_restart_offer:
     - text: "Would you like to start a new conversation?"
@@ -243,6 +273,10 @@ actions:
   - action_offer_restart
   - action_restart_conversation
   - action_fetch_user_preferences
+  - action_save_travel_request
+  - action_mark_flight_search_complete
+  - action_mark_hotel_search_complete
+  - action_reset_hotel_form
 
 forms:
   flight_search_form:

@@ -49,7 +49,8 @@ rules:
       - active_loop: null
       - action: action_search_flights
       - slot_was_set:
-          - flights_found: true
+        - flights_found: true
+      - action: action_mark_flight_search_complete
       - action: action_listen
 
   - rule: Submit flight search form and handle failure
@@ -67,6 +68,7 @@ rules:
   - rule: Activate hotel search form
     steps:
       - intent: search_hotels
+      - action: action_reset_hotel_form
       - action: hotel_search_form
       - active_loop: hotel_search_form
 
@@ -77,6 +79,14 @@ rules:
       - action: hotel_search_form
       - active_loop: null
       - action: action_search_hotels
+      - action: action_mark_hotel_search_complete
+      - action: action_listen
+
+  - rule: Complete hotel search
+    condition:
+      - slot_was_set:
+          - hotel_search_completed: true
+    steps:
       - action: action_listen
 
   - rule: Say goodbye anytime the user says goodbye
