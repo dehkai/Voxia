@@ -8,6 +8,7 @@ import Header from "../components/employee_dashboard/Header";
 import MainGrid from "../components/employee_dashboard/MainGrid";
 import SideMenu from "../components/employee_dashboard/SideMenu";
 import OptionsMenu from "../components/employee_dashboard/OptionsMenu";
+import DataTable from "../components/employee_dashboard/DataTable";
 import AppTheme from "../shared-theme/AppTheme";
 import ChatBubbleIcon from "@mui/icons-material/ChatBubble";
 import InboxIcon from "@mui/icons-material/MoveToInbox";
@@ -81,6 +82,7 @@ const Dashboard = React.memo(() => {
                     <Stack spacing={2} sx={{ alignItems: "center", mx: 3, pb: 5, mt: { xs: 8, md: 0 } }}>
                         {/* <Header />
                         <MainGrid /> */}
+                        <DataTable />
                     </Stack>
                 </Box>
                 <OptionsMenu />
@@ -92,7 +94,9 @@ const Dashboard = React.memo(() => {
                 toggleDrawer={toggleDrawer}
                 items={["Inbox", "Starred", "Send email", "Drafts"]} // Customize items as needed
             /> */}
+            
         </AppTheme>
+        
     );
 });
 
