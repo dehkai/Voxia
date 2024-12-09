@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { verifyToken } = require('../../backend/modules/user/services/userService');
+const { verifyToken } = require('../modules/user/services/userService');
 
 const authMiddleware = (req, res, next) => {
   const token = req.header('Authorization')?.split(' ')[1];

@@ -9,7 +9,7 @@ services:
     command: npx nodemon index.js  # Use nodemon for auto-reloading in development
     restart: always
     env_file:
-      - ./backend/.env
+      - ./backend/.backend.env
     networks:
       - Voxia
     profiles:
