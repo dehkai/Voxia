@@ -17,12 +17,14 @@ intents:
   - bot_challenge
   - choose_trip_type
   - select_flight
-  - confirm_flight
+  # - confirm_flight
   - save_travel_request
   - affirm
   - deny
   - mood_unhappy
   - check_token_status
+  - select_hotel
+  # - confirm_booking
 
 entities:
   - airport_code
@@ -66,8 +68,7 @@ slots:
     influence_conversation: true
     mappings:
       - type: custom
-        action: action_set_trip_type
-  
+
   city:
     type: text
     mappings:
@@ -157,6 +158,18 @@ slots:
     mappings:
       - type: custom
 
+  hotel_options:
+    type: list
+    influence_conversation: true
+    mappings:
+      - type: custom
+
+  selected_hotel:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
+
 responses:
 
   utter_confirm_save:
@@ -242,10 +255,10 @@ responses:
   utter_ask_trip_type:
     - text: "Would you like to book a single trip or round trip flight?"
       buttons:
-      - title: "Single Trip"
-        payload: "/single_trip"
-      - title: "Round Trip"
-        payload: "/round_trip"
+        - title: "Single Trip"
+          payload: "/single_trip"
+        - title: "Round Trip"
+          payload: "/round_trip"
 
   utter_ask_return_date:
     - text: "What's your return date? (Please provide the date in YYYY-MM-DD format)"
@@ -265,6 +278,8 @@ responses:
   utter_token_received:
     - text: "Your authentication token has been successfully fetched and stored."
 
+  utter_ask_hotel_confirmation:
+    - text: Would you like to confirm this hotel booking?
 
 actions:
   - action_search_flights
@@ -286,6 +301,8 @@ actions:
   - action_reset_hotel_form
   - action_select_flight
   - validate_flight_search_form
+  - action_select_hotel
+  # - action_confirm_hotel_booking
 
 forms:
   flight_search_form:
@@ -305,3 +322,5 @@ forms:
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
+
+  

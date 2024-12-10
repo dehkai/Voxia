@@ -2,23 +2,6 @@ version: "3.1"
 
 rules:
 
-  - rule: Offer restart after flight search failure
-    condition:
-      - slot_was_set:
-          - flights_found: false
-    steps:
-      - action: utter_no_flights_found
-      - action: action_offer_restart
-      - action: action_listen
-
-  - rule: Offer restart after successful flight search
-    condition:
-      - slot_was_set:
-          - flights_found: true
-    steps:
-      - action: action_offer_restart
-      - action: action_listen
-
   - rule: Handle conversation restart
     steps:
       - intent: restart_conversation
@@ -131,4 +114,23 @@ rules:
     steps:
     - intent: select_flight
     - action: action_select_flight
+    - action: action_mark_flight_search_complete
     - action: action_listen
+
+  - rule: Select hotel
+    condition:
+      - active_loop: null
+      - slot_was_set:
+        - hotel_search_completed: true
+    steps:
+      - intent: select_hotel
+      - action: action_select_hotel
+
+  # - rule: Confirm booking
+  #   condition:
+  #     - active_loop: null
+  #     - slot_was_set:
+  #       - selected_hotel: true
+  #   steps:
+  #     - intent: confirm_booking
+  #     - action: action_confirm_hotel_booking

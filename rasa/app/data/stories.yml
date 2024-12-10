@@ -233,11 +233,7 @@ stories:
     steps:
     - intent: select_flight
     - action: action_select_flight
-    - intent: confirm_flight
     - action: action_mark_flight_search_complete
-    - slot_was_set:
-        - flight_search_completed: true
-    - action: utter_search_complete
     - action: action_listen
 
   - story: single trip selection flow

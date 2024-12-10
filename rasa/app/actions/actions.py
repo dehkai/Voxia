@@ -249,28 +249,6 @@ class ActionFetchUserPreferences(Action):
             return []
 
 
-# class ActionOfferRestart(Action):
-#     """Action to offer conversation restart after flight search"""
-    
-#     def name(self) -> Text:
-#         return "action_offer_restart"
-        
-#     async def run(
-#         self,
-#         dispatcher: CollectingDispatcher,
-#         tracker: Tracker,
-#         domain: Dict[Text, Any]
-#     ) -> List[Dict[Text, Any]]:
-#         # Offer restart with buttons
-#         dispatcher.utter_message(
-#             text="Would you like to start a new search?",
-#             buttons=[
-#                 {"title": "Yes, start new search", "payload": "/restart_conversation"},
-#                 {"title": "No, end chat", "payload": "/goodbye"}
-#             ]
-#         )
-#         return []
-
 class ActionRestartConversation(Action):
     """Action to handle conversation restart"""
     
@@ -767,21 +745,31 @@ class ActionSearchHotels(Action):
 
             if hotel_offers:
                 hotel_details = []
-                for hotel_offer in hotel_offers[:3]:
+                for idx, hotel_offer in enumerate(hotel_offers[:3], 1):
                     hotel_id = hotel_offer['hotel']['hotelId']
                     hotel_info = hotel_info_map.get(hotel_id, {})
                     rating = hotel_ratings_map.get(hotel_id, 'N/A')
                     formatted_details = self.format_hotel_details(hotel_offer, rating)
                     hotel_details.append(formatted_details)
 
+                # First display the instruction message
                 dispatcher.utter_message(
-                    text=(
-                        f"🏨 Found {len(hotel_offers)} available hotels in {city_code}.\n"
-                        f"Here are the top options:\n\n" + "\n\n".join(hotel_details)
-                    )
+                    text=f"🏨 Found {len(hotel_offers)} available hotels in {city_code}.\n"
+                         "Please select one by saying 'select hotel 1', 'select hotel 2', or 'select hotel 3':"
                 )
+
+                # Then display numbered options
+                for idx, hotel in enumerate(hotel_details, 1):
+                    dispatcher.utter_message(text=f"Option {idx}:\n{hotel}")
+
+                # Store hotel options in a slot
+                return [
+                    SlotSet("hotel_options", hotel_details),
+                    SlotSet("hotel_search_completed", True)
+                ]
             else:
                 dispatcher.utter_message(text=f"Sorry, no available hotels found in {city_code} for your dates.")
+                return []
 
         except ResponseError as error:
             logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
@@ -1003,10 +991,10 @@ class ActionSelectFlight(Action):
             
             dispatcher.utter_message(
                 text=confirmation_message,
-                buttons=[
-                    {"title": "Yes, confirm", "payload": "/confirm_flight"},
-                    {"title": "No, choose different flight", "payload": "/deny"}
-                ]
+                # buttons=[
+                #     {"title": "Yes, confirm", "payload": "/confirm_flight"},
+                #     {"title": "No, choose different flight", "payload": "/deny"}
+                # ]
             )
             
             return [SlotSet("selected_flight", selected_flight)]
@@ -1014,3 +1002,58 @@ class ActionSelectFlight(Action):
         except (IndexError, TypeError):
             dispatcher.utter_message(text="Sorry, that flight option is not available.")
             return []
+
+class ActionSelectHotel(Action):
+    def name(self) -> Text:
+        return "action_select_hotel"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        hotel_options = tracker.get_slot('hotel_options')
+        selected_index = next(
+            (int(num) for num in re.findall(r'\d+', tracker.latest_message.get('text', ''))),
+            None
+        )
+
+        if not selected_index or selected_index > len(hotel_options):
+            dispatcher.utter_message(text="Please select a valid hotel number.")
+            return []
+
+        selected_hotel = hotel_options[selected_index - 1]
+
+        # Format confirmation message with buttons in a single message
+        confirmation_message = (
+            f"🏨 You've selected this hotel:\n\n"
+            f"{selected_hotel}\n\n"
+            f"Would you like to confirm this selection?"
+        )
+        
+        dispatcher.utter_message(
+            text=confirmation_message,
+            # buttons=[
+            #     {"title": "Yes, confirm", "payload": "/confirm_booking"},
+            #     {"title": "No, choose different hotel", "payload": "/deny"}
+            # ]
+        )
+        
+        return [SlotSet("selected_hotel", selected_hotel)]
+
+# class ActionConfirmHotelBooking(Action):
+#     def name(self) -> Text:
+#         return "action_confirm_hotel_booking"
+
+#     def run(self, dispatcher: CollectingDispatcher,
+#             tracker: Tracker,
+#             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+#         selected_hotel = tracker.get_slot('selected_hotel')
+
+#         dispatcher.utter_message(
+#             text=f"Perfect! This is your hotel selection:\n\n"
+#                  f"Hotel Details:\n{selected_hotel}\n\n"
+#                  f"Your choice has been saved 🎉"
+#         )
+        
+#         return []

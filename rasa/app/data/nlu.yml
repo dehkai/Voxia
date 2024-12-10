@@ -180,6 +180,7 @@ nlu:
 
   - intent: search_flights
     examples: |
+      - book a flight
       - I want to book a flight
       - I need to find a flight
       - Search for flights
@@ -317,6 +318,7 @@ nlu:
   - intent: single_trip
     examples: |
       - single trip
+      - Single Trip
       - one way
       - single
       - just one way
@@ -330,6 +332,7 @@ nlu:
   - intent: round_trip
     examples: |
       - round trip
+      - Round Trip
       - return flight
       - two way
       - round
@@ -373,12 +376,42 @@ nlu:
       - option 3
       - last flight
 
-  - intent: confirm_flight
+  # - intent: confirm_flight
+  #   examples: |
+  #     - yes, that's correct
+  #     - confirm flight selection
+  #     - book this flight
+  #     - yes, proceed with this flight
+  #     - that's the flight I want
+  #     - looks good
+  #     - yes, book it
+
+  - intent: select_hotel
     examples: |
-      - yes, that's correct
-      - confirm flight selection
-      - book this flight
-      - yes, proceed with this flight
-      - that's the flight I want
-      - looks good
-      - yes, book it
+      - I want hotel 1
+      - book hotel 1
+      - select hotel 1
+      - choose hotel 1
+      - first hotel
+      - hotel number 1
+      - 1
+
+  # - intent: confirm_booking
+  #   examples: |
+  #     - yes please confirm
+  #     - confirm booking
+  #     - yes book it
+  #     - yes that's correct
+  #     - proceed with booking
+  #     - yes go ahead
+  #     - book it
+  #     - confirm
+  #     - yes confirm both
+
+  - intent: save_travel_request
+    examples: |
+      - save my travel request
+      - save this request
+      - please save my travel request
+      - save my booking
+      - save my travel plans
