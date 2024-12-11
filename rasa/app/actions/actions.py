@@ -857,7 +857,8 @@ class ActionGeneratePDF(Action):
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
         token = tracker.get_slot("auth_token")
         # Define the URL for the backend PDF generation endpoint
-        backend_url = "http://localhost:5000/api/chatbot/chatbots/generate-pdf"
+        backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+        backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-pdf"
         
         # Sample data to send to the PDF generation API
         data = {
@@ -866,11 +867,11 @@ class ActionGeneratePDF(Action):
 
         # Make a request to the backend to generate the PDF
         try:
-            response = requests.post(backend_url, json=data)
+            response = requests.post(backend_url_pdf, json=data)
             response.raise_for_status()
 
             # Construct download link
-            download_link = f"{backend_url}/download"
+            download_link = f"{backend_url_pdf}/download"
             dispatcher.utter_message(text="Your PDF has been generated! Click the link to download: " + download_link)
 
         except requests.exceptions.RequestException as e:
@@ -911,23 +912,32 @@ class ActionFetchAuthToken(Action):
         # Extract the provided email entity from user input
         email = next(tracker.get_latest_entity_values("email"), None)
         
+        # Get backend URL from environment variable, with fallback
+        backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+        url = f"{backend_url}/api/auth/fetch-token"
+        
         # Ensure email slot is set
         if email:
             # Call your backend API to get the token
-            url = "http://localhost:5000/api/auth/fetch-token"
             headers = {"Content-Type": "application/json"}
-            response = requests.post(url, json={"email": email}, headers=headers)
-
-            if response.status_code == 200:
-                token = response.json().get("token")
-                if token:
-                    dispatcher.utter_message(text=f"Token fetched successfully: {token}")
-                    return [SlotSet("auth_token", token), SlotSet("user_email", email)]
+            try:
+                response = requests.post(url, json={"email": email}, headers=headers)
+                
+                if response.status_code == 200:
+                    token = response.json().get("token")
+                    if token:
+                        dispatcher.utter_message(text="Authentication successful!")
+                        return [SlotSet("auth_token", token), SlotSet("user_email", email)]
+                    else:
+                        dispatcher.utter_message(text="Sorry, we couldn't retrieve your token.")
+                        return []
                 else:
-                    dispatcher.utter_message(text="Sorry, we couldn't retrieve your token.")
+                    dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
                     return []
-            else:
-                dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+                    
+            except requests.exceptions.ConnectionError:
+                dispatcher.utter_message(text="Unable to connect to the authentication service. Please try again later.")
+                logger.error(f"Failed to connect to backend at {url}")
                 return []
         else:
             dispatcher.utter_message(text="Please provide a valid email address.")
