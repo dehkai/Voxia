@@ -1,6 +1,6 @@
 require('dotenv').config({ path: '.backend.env' });
 const path = require('path'); 
-const { generatePDF } = require('../services/pdfServices');
+const { generatePDF, generateCustomPDF  } = require('../services/pdfServices');
 
 const createPDFHandler = async (req, res) => {
     try {
@@ -26,6 +26,53 @@ const createPDFHandler = async (req, res) => {
     }
 };
 
+// const createCustomPDFHandler = async (req, res) => {
+//     try {
+//         const { username, password } = req.body;
+
+//         if (!username || !password) {
+//             return res.status(400).json({ message: 'Username and password are required!' });
+//         }
+
+//         const data = {
+//             username,
+//             password
+//             // Add more fields as needed
+//         };
+
+//         const filePath = await generateCustomPDF(data);
+
+//         res.status(200).json({
+//             message: 'PDF generated successfully',
+//             filePath: filePath,
+//         });
+//     } catch (error) {
+//         console.error('Custom PDF generation error:', error);
+//         res.status(500).json({ message: 'An error occurred while generating the PDF' });
+//     }
+// };
+
+const createCustomPDFHandler = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({ message: 'Username and password are required!' });
+        }
+
+        const data = { username, password };
+        const filePath = await generateCustomPDF(data);
+
+        res.status(200).json({
+            message: 'PDF generated successfully',
+            filePath: filePath
+        });
+    } catch (error) {
+        console.error('Custom PDF generation error:', error);
+        res.status(500).json({ message: 'An error occurred while generating the PDF' });
+    }
+};
+
 const downloadPDFHandler = (req, res) => {
     const filePath = path.join(__dirname, '../../generated_report.pdf');
     res.download(filePath, 'generated_report.pdf', (err) => {
@@ -40,6 +87,6 @@ const downloadPDFHandler = (req, res) => {
 module.exports = { 
     
     createPDFHandler,
-    downloadPDFHandler
-
+    downloadPDFHandler,
+    createCustomPDFHandler,
 };

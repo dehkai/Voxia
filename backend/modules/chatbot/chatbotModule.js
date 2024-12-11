@@ -6,9 +6,13 @@ const {
     getAllChatbotsHandler,
     getChatbotByIdHandler,
     updateChatbotHandler,
-    deleteChatbotHandler
+    deleteChatbotHandler,
 } = require('../chatbot/controllers/ChatbotController');
-const { createPDFHandler, downloadPDFHandler } = require('./controllers/pdfController');
+const { 
+    createPDFHandler, 
+    downloadPDFHandler,
+    createCustomPDFHandler,
+} = require('./controllers/pdfController');
 
 
 // Define CRUD routes for Chatbot
@@ -22,6 +26,7 @@ router.delete('/chatbots/:id', deleteChatbotHandler);      // Delete a chatbot b
 // PDF generation route
 router.post('/chatbots/generate-pdf', authMiddleware, createPDFHandler);
 router.get('/chatbots/generate-pdf/download',authMiddleware, downloadPDFHandler);
+router.post('/chatbots/generate-custom', createCustomPDFHandler);
 
 module.exports = {
     chatbotRoutes: router
