@@ -227,7 +227,34 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                     timestamp: new Date() 
                                 };
                                 setMessages(prev => [...prev, userMessage]);
-                                handleSendMessage(button.payload);
+                                
+                                // Send the payload instead of the title
+                                const payload = button.payload;
+                                fetch("http://localhost:5005/webhooks/rest/webhook", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({ 
+                                        sender: "user", 
+                                        message: payload.replace("/", "") // Remove the leading slash from the payload
+                                    }),
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    data.forEach((response) => {
+                                        const botMessage = {
+                                            text: response.text,
+                                            isBot: true,
+                                            timestamp: new Date(),
+                                            buttons: response.buttons || []
+                                        };
+                                        setMessages(prev => [...prev, botMessage]);
+                                    });
+                                })
+                                .catch(error => {
+                                    console.error("Error in Rasa interaction:", error);
+                                });
                             }}
                             sx={{
                                 backgroundColor: 'white',
