@@ -65,7 +65,7 @@ export function renderAvatar(params) {
   );
 }
 
-// Updated columns with hardcoded row numbers
+// Updated columns with hardcoded row numbers, Status, and Action columns
 export const columns = [
   {
     field: 'rowNumber',
@@ -112,9 +112,41 @@ export const columns = [
     flex: 1,
     minWidth: 150,
   },
+  {
+    field: 'status',
+    headerName: 'Status',
+    flex: 1,
+    minWidth: 150,
+    renderCell: (params) => {
+      const status = params.value;
+      let color = 'gray';
+      if (status === 'Approved') {
+        color = 'green';
+      } else if (status === 'Pending') {
+        color = 'orange';
+      } else if (status === 'Rejected') {
+        color = 'red';
+      }
+      return <Chip label={status} color={color} size="small" />;
+    },
+  },
+  {
+    field: 'action',
+    headerName: 'Action',
+    flex: 1,
+    minWidth: 150,
+    renderCell: (params) => {
+      return (
+        <div>
+          <button style={{ marginRight: '5px' }}>View</button>
+          <button>Approve</button>
+        </div>
+      );
+    },
+  },
 ];
 
-// Example rows for the table with hardcoded row numbers
+// Example rows for the table with hardcoded row numbers, Status, and Action columns
 export const rows = [
   {
     id: 1,
@@ -126,6 +158,7 @@ export const rows = [
     endDate: '2024-12-15',
     amountRequested: 1200,
     requestType: 'Conference',
+    status: 'Approved', // Hardcoded status
   },
   {
     id: 2,
@@ -137,6 +170,7 @@ export const rows = [
     endDate: '2024-12-18',
     amountRequested: 1500,
     requestType: 'Business',
+    status: 'Pending', // Hardcoded status
   },
   {
     id: 3,
@@ -148,6 +182,7 @@ export const rows = [
     endDate: '2024-12-27',
     amountRequested: 2200,
     requestType: 'Business',
+    status: 'Rejected', // Hardcoded status
   },
   {
     id: 4,
@@ -159,6 +194,7 @@ export const rows = [
     endDate: '2024-12-26',
     amountRequested: 1800,
     requestType: 'Conference',
+    status: 'Approved', // Hardcoded status
   },
   {
     id: 5,
@@ -170,5 +206,66 @@ export const rows = [
     endDate: '2024-12-20',
     amountRequested: 1000,
     requestType: 'Business',
+    status: 'Pending', // Hardcoded status
+  },
+  {
+    id: 6,
+    rowNumber: 6, // Hardcoded row number
+    name: 'Sarah Johnson',
+    employeeId: 'EMP006',
+    destination: 'Abu Dhabi',
+    startDate: '2024-12-18',
+    endDate: '2024-12-20',
+    amountRequested: 3200,
+    requestType: 'Business',
+    status: 'Pending', // Hardcoded status
+  },
+  {
+    id: 7,
+    rowNumber: 7, // Hardcoded row number
+    name: 'David Turner',
+    employeeId: 'EMP007',
+    destination: 'Berlin',
+    startDate: '2024-12-18',
+    endDate: '2024-12-20',
+    amountRequested: 1000,
+    requestType: 'Business',
+    status: 'Pending', // Hardcoded status
+  },
+  {
+    id: 8,
+    rowNumber: 8, // Hardcoded row number
+    name: 'Linda Harris',
+    employeeId: 'EMP008',
+    destination: 'London',
+    startDate: '2024-12-18',
+    endDate: '2024-12-20',
+    amountRequested: 4000,
+    requestType: 'Business',
+    status: 'Pending', // Hardcoded status
+  },
+  {
+    id: 9,
+    rowNumber: 9, // Hardcoded row number
+    name: 'James Wilson',
+    employeeId: 'EMP009',
+    destination: 'Bangkok',
+    startDate: '2024-12-18',
+    endDate: '2024-12-20',
+    amountRequested: 2500,
+    requestType: 'Business',
+    status: 'Pending', // Hardcoded status
+  },
+  {
+    id: 10,
+    rowNumber: 10, // Hardcoded row number
+    name: 'Emily Davis',
+    employeeId: 'EMP010',
+    destination: 'Kuala Lumpur',
+    startDate: '2024-12-18',
+    endDate: '2024-12-20',
+    amountRequested: 3500,
+    requestType: 'Business',
+    status: 'Pending', // Hardcoded status
   },
 ];

@@ -3,13 +3,11 @@ import { alpha } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Fab from '@mui/material/Fab';
-import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
-import AppNavbar from '../components/employee_dashboard/AppNavbar';
-import Header from '../components/employee_dashboard/Header';
-import MainGrid from '../components/employee_dashboard/MainGrid';
-import SideMenu from '../components/employee_dashboard/SideMenu';
-import OptionsMenu from '../components/employee_dashboard/OptionsMenu';
+import AppNavbar from '../components/admin_dashboard/AppNavbar';
+import Header from '../components/admin_dashboard/Header';
+import TravelRequestTable from '../components/admin_dashboard/TravelRequestTable';
+import SideMenu from '../components/admin_dashboard/SideMenu';
+import OptionsMenu from '../components/admin_dashboard/OptionsMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/auth';
@@ -19,7 +17,6 @@ import {
   datePickersCustomizations,
   treeViewCustomizations,
 } from '../shared-theme/customizations';
-import ChatbotDrawer from '../components/util/ChatbotDrawer';
 
 const xThemeComponents = {
   ...chartsCustomizations,
@@ -31,29 +28,19 @@ const xThemeComponents = {
 const Dashboard = React.memo(() => {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
-
-  // Redirect to sign in if not logged in
+  
   React.useEffect(() => {
     if (!isLoggedIn) {
       navigate("/signin");
     }
   }, [isLoggedIn, navigate]);
 
-  // Chatbot Drawer state
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const handleToggleDrawer = () => {
-    setDrawerOpen((prev) => !prev);
-  };
-
   return (
     <AppTheme themeComponents={xThemeComponents}>
       <CssBaseline enableColorScheme />
       <Box sx={{ display: 'flex' }}>
-        {/* Sidebar and Navbar */}
         <SideMenu />
         <AppNavbar />
-        
-        {/* Main content area */}
         <Box
           component="main"
           sx={(theme) => ({
@@ -73,36 +60,15 @@ const Dashboard = React.memo(() => {
               mt: { xs: 8, md: 0 },
             }}
           >
-            {/* Retain the original components */}
             <Header />
-            <MainGrid />
+            <TravelRequestTable />
           </Stack>
         </Box>
         <OptionsMenu />
       </Box>
-
-      {/* Chatbot button */}
-      <Box sx={{ "& > :not(style)": { m: 1 } }}>
-        <Fab
-          color="primary"
-          aria-label="chat"
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-            zIndex: 1000,
-          }}
-          onClick={handleToggleDrawer}
-        >
-          <ChatBubbleIcon />
-        </Fab>
-      </Box>
-
-      {/* Chatbot Drawer */}
-      <ChatbotDrawer open={drawerOpen} onClose={handleToggleDrawer} />
     </AppTheme>
   );
 });
 
-Dashboard.displayName = 'Dashboard';
+Dashboard.displayName = 'AdminDashboard';
 export default Dashboard;

@@ -1,19 +1,31 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
-import AppNavbar from "../components/admin_dashboard/AppNavbar"; // or your specific admin navbar
-import SideMenu from "../components/admin_dashboard/SideMenu"; // or your specific admin menu
-import OptionsMenu from "../components/admin_dashboard/OptionsMenu"; // or your specific admin options
+import React, { useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { Box } from "@mui/material";
+import AppNavbar from "../components/admin_dashboard/AppNavbar"; // Admin Navbar
+import AdminSideMenu from "../components/admin_dashboard/MenuContent"; // Admin Sidebar
+import OptionsMenu from "../components/admin_dashboard/OptionsMenu"; // Admin Options Menu
+import AppTheme from '../shared-theme/AppTheme'; 
 
 const AdminLayout = () => {
+    const location = useLocation();
+    const shouldHideMenu = location.pathname === '/user_profile'; // You can change this to hide the menu on certain pages
+
     return (
         <Box sx={{ display: "flex" }}>
-            <SideMenu /> {/* Admin Side Menu */}
+            {/* Always render the Admin Sidebar */}
+            <AppTheme>
+                <AdminSideMenu /> {/* Admin Side Menu */}
+            </AppTheme>
+
+            {/* App Navbar */}
             <AppNavbar />
+            
             <Box component="main" sx={{ flexGrow: 1, overflow: "auto" }}>
                 <Outlet /> {/* Render child routes */}
             </Box>
-            <OptionsMenu /> {/* Admin Options Menu */}
+
+            {/* Admin Options Menu */}
+            <OptionsMenu />
         </Box>
     );
 };

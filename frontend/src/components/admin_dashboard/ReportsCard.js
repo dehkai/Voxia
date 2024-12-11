@@ -4,28 +4,28 @@ import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
-import PeopleIcon from '@mui/icons-material/People';  // Updated icon
+import AssignmentIcon from '@mui/icons-material/Assignment';  // Updated icon for reports
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 
-export default function HighlightedCard() {
+export default function TravelRequestReportsCard() {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card sx={{ height: 'auto', minHeight: 200 }}>  {/* Adjusted minHeight for a taller card */}
       <CardContent>
-        <PeopleIcon />  {/* Updated icon to match employee-related content */}
+        <AssignmentIcon />  {/* Icon representing reports */}
         <Typography
           component="h2"
           variant="subtitle2"
           gutterBottom
           sx={{ fontWeight: '600' }}
         >
-          View Employee Details
+          View Travel Request Reports
         </Typography>
-        <Typography sx={{ color: 'text.secondary', mb: '8px' }}>
-          Access detailed information about employees, their roles, and performance.
+        <Typography sx={{ color: 'text.secondary', mb: '50px' }}>
+          Access reports on employee travel requests, including trip details and expenses.
         </Typography>
         <Button
           variant="contained"
@@ -34,7 +34,7 @@ export default function HighlightedCard() {
           endIcon={<ChevronRightRoundedIcon />}
           fullWidth={isSmallScreen}
         >
-          View Details
+          View Reports
         </Button>
       </CardContent>
     </Card>

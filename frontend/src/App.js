@@ -9,11 +9,13 @@ import SignIn from "./pages/SignIn";
 import AdminDashboard from "./pages/Admin_Dashboard";
 import EmployeeDashboard from "./pages/Employee_Dashboard";
 import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword"; // Import the ResetPassword component
+import ResetPassword from "./pages/ResetPassword";
 import UserProfile from "./pages/User_Profile";
+import TravelRequestsPage from './pages/TravelRequestsPage'; // Import Travel Requests Page
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
-import AdminLayout from "./layout/AdminLayout"; // Import Admin Layout
-import EmployeeLayout from "./layout/EmployeeLayout"; // Import Employee Layout
+import AdminLayout from "./layout/AdminLayout"; 
+import EmployeeLayout from "./layout/EmployeeLayout"; 
+import NavbarBreadcrumbs from './components/employee_dashboard/NavbarBreadcrumbs'; // Import Breadcrumbs Component
 
 function App() {
   const [authState, setAuthState] = useState(isAuthenticated());
@@ -80,59 +82,26 @@ function App() {
                 <SignIn />
               ) : (
                 <Navigate
-                  to={
-                    auth.user?.role === "admin"
-                      ? "/admin_dashboard"
-                      : "/employee_dashboard"
-                  }
+                  to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"}
                 />
               )
             }
           />
 
           {/* Forgot Password Route */}
-          <Route path="/forgot-password" 
-          element={<ForgotPassword />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* Reset Password Route - with token handling */}
-          <Route
-            path="/reset-password"
-            element={<ResetPassword />} // Make sure the component handles the token
-          />
-          <Route path="/" element={<Navigate to={!auth.isLoggedIn ? "/signin" : auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />} />
+          {/* Reset Password Route */}
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Pages for Travel Request*/}
+          <Route path="/travel-requests" element={<TravelRequestsPage />} />
 
           {/* Root layout for all other routes */}
           <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>
-            <Route
-              path="admin_dashboard"
-              element={
-                auth.isLoggedIn && auth.user?.role === "admin" ? (
-                  <AdminDashboard />
-                ) : (
-                  <Navigate to="/signin" />
-                )
-              }
-            />
-            <Route
-              path="employee_dashboard"
-              element={
-                auth.isLoggedIn && auth.user?.role === "employee" ? (
-                  <EmployeeDashboard />
-                ) : (
-                  <Navigate to="/signin" />
-                )
-              }
-            />
-            <Route
-              path="signin"
-              element={
-                !auth.isLoggedIn ? (
-                  <SignIn />
-                ) : (
-                  <Navigate to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />
-                )
-              }
-            />
+            <Route path="admin_dashboard" element={<AdminDashboard />} />
+            <Route path="employee_dashboard" element={<EmployeeDashboard />} />
+            <Route path="signin" element={<SignIn />} />
             <Route path="user_profile" element={<UserProfile />} />
           </Route>
         </Routes>
