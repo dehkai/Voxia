@@ -7,19 +7,23 @@ import ColorModeSelect from '../shared-theme/ColorModeSelect';
 function Account() {
     const [user, setUser] = useState({ username: '', email: '', role: '', gender: '', createdAt: '', jobTitle: '', preferences: { cabinClass: '', hotelRating: '' } });
     const [openSnackbar, setOpenSnackbar] = useState(false); 
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+    const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
 
+ 
     useEffect(() => {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (token) {
             fetch('http://localhost:5000/api/auth/profile', {
                 method: 'GET',
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    Authorization: Bearer ${token},
                 },
             })
             .then((response) => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(HTTP error! status: ${response.status});
                 }
                 return response.json();
             })
@@ -49,13 +53,13 @@ function Account() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
+                    Authorization: Bearer ${token},
                 },
                 body: JSON.stringify(user),  
             });
     
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(HTTP error! status: ${response.status});
             }
     
             const data = await response.json();
@@ -70,6 +74,47 @@ function Account() {
     const handleSnackbarClose = () => {
         setOpenSnackbar(false);
     };
+
+    const handleChangePassword = async () => {
+        const { currentPassword, newPassword, confirmNewPassword } = passwords;
+
+        if (newPassword !== confirmNewPassword) {
+            setSnackbarMessage('Passwords do not match!');
+            setSnackbarSeverity('error');
+            setOpenSnackbar(true);
+            return;
+        }
+
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/change-password', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ currentPassword, newPassword }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            setSnackbarMessage('Password changed successfully!');
+            setSnackbarSeverity('success');
+            setOpenSnackbar(true);
+            setPasswords({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+        } catch (error) {
+            console.error('Error changing password:', error);
+            setSnackbarMessage('Failed to change password.');
+            setSnackbarSeverity('error');
+            setOpenSnackbar(true);
+        }
+    };
+    const handleSnackbarClose = () => {
+        setOpenSnackbar(false);
+    };
+
 
     return (
         <AppTheme>
@@ -202,7 +247,7 @@ function Account() {
                                                     <MenuItem value="">Select Hotel Rating</MenuItem>
                                                     {[1, 2, 3, 4, 5].map((rating) => (
                                                         <MenuItem key={rating} value={rating}>
-                                                            {`${rating} Star`}
+                                                            {${rating} Star}
                                                         </MenuItem>
                                                     ))}
                                                 </TextField>
@@ -211,6 +256,60 @@ function Account() {
                                     </Box>
                                 </CardContent>
                             </Card>
+
+
+                          {/* Change Password Card */}
+                          <Card sx={{ mt: 4 }}>
+                                <CardContent>
+                                    <Typography variant="h6" gutterBottom sx={{ textAlign: 'left' }}>
+                                        Change Password
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary" gutterBottom sx={{ textAlign: 'left' }}>
+                                        Update your account password below
+                                    </Typography>
+                                    <Box component="form" noValidate autoComplete="off" sx={{ mt: 2 }}>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Current Password"
+                                                    type="password"
+                                                    value={passwords.currentPassword}
+                                                    onChange={(e) =>
+                                                        setPasswords({ ...passwords, currentPassword: e.target.value })
+                                                    }
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="New Password"
+                                                    type="password"
+                                                    value={passwords.newPassword}
+                                                    onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Confirm New Password"
+                                                    type="password"
+                                                    value={passwords.confirmNewPassword}
+                                                    onChange={(e) =>
+                                                        setPasswords({ ...passwords, confirmNewPassword: e.target.value })
+                                                    }
+                                                />
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                                        <Button variant="contained" color="primary" onClick={handleChangePassword}>
+                                            Save Password
+                                        </Button>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+
 
                             {/* Save Button */}
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
@@ -240,6 +339,7 @@ function Account() {
             </Box>
         </AppTheme>
     );
+
 }
 
 export default Account;

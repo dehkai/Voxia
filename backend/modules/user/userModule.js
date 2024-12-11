@@ -32,6 +32,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
     }
 });
 router.put('/update-profile', authMiddleware, userController.updateUserDetails);
+router.put('/change-password', authMiddleware, userController.changePassword);
 
 // Forgot password route
 router.post('/forgot-password', forgotPassword);
