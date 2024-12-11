@@ -104,6 +104,8 @@ const login = async (req, res) => {
     }
 };
 
+
+
 const getToken = async (req, res) => {
     try {
         const { email } = req.body;
@@ -152,9 +154,43 @@ const updateUserDetails = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    try {
+        const userId = req.user.userId; 
+        const { oldPassword, newPassword } = req.body;
+
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ message: 'Both old and new passwords are required' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const isValidPassword = await bcrypt.compare(oldPassword, user.password);
+        if (!isValidPassword) {
+            return res.status(400).json({ message: 'Old password is incorrect' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+        await user.save();
+
+        res.status(200).json({ message: 'Password updated successfully' });
+    } catch (error) {
+        console.error('Error changing password:', error);
+        res.status(500).json({ message: 'Error changing password', error: error.message });
+    }
+};
+
+
 module.exports = {
     register,
     login,
     getToken,
-    updateUserDetails
+    updateUserDetails,
+    changePassword
 };
+
