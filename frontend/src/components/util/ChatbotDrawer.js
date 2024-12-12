@@ -12,7 +12,6 @@ import {
   Typography,
   Divider,
 } from "@mui/material";
-import SettingsIcon from "@mui/icons-material/Settings";
 import { fetchChatbotResponse } from "../../mutations/chatBot/useChatbotInteraction";
 import botAvatar from "../../assets/images/robot.jpg";
 import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
@@ -21,7 +20,12 @@ import AppTheme from "../../shared-theme/AppTheme";
 
 const ChatbotDrawer = ({ open, onClose }) => {
   const [messages, setMessages] = useState([
-    { text: "Hello! How can I help you?", isBot: true, timestamp: new Date() },
+    { 
+      text: "Hello! How can I help you?", 
+      isBot: true, 
+      timestamp: new Date(),
+      buttons: [] 
+    },
   ]);
   const [input, setInput] = useState("");
   const [rows, setRows] = useState(1);
@@ -57,12 +61,13 @@ const ChatbotDrawer = ({ open, onClose }) => {
     setRows(1);
 
     try {
-      const botResponses = await fetchChatbotResponse(input); // Call function directly
+      const botResponses = await fetchChatbotResponse(input);
       botResponses.forEach((response) => {
         const botMessage = {
           text: response.text,
           isBot: true,
           timestamp: new Date(),
+          buttons: response.buttons || []
         };
         setMessages((prevMessages) => [...prevMessages, botMessage]);
       });
@@ -176,7 +181,8 @@ const ChatbotDrawer = ({ open, onClose }) => {
     sx={{ 
         justifyContent: msg.isBot ? "flex-start" : "flex-end", 
         display: "flex", 
-        alignItems: "flex-start" 
+        alignItems: "flex-start",
+        mb: 1
     }}
 >
     {msg.isBot ? (
@@ -190,7 +196,8 @@ const ChatbotDrawer = ({ open, onClose }) => {
             display: "flex", 
             flexDirection: "column", 
             alignItems: msg.isBot ? "flex-start" : "flex-end", 
-            maxWidth: "75%" 
+            maxWidth: "75%",
+            width: "auto"
         }}
     >
         <Box
@@ -200,22 +207,80 @@ const ChatbotDrawer = ({ open, onClose }) => {
                 borderRadius: 2,
                 p: 1,
                 maxWidth: "100%",
-                width: "fit-content",
                 flexShrink: 0,
+                wordBreak: "break-word"
             }}
         >
-            <Typography component="span" sx={{ whiteSpace: "pre-wrap" }}>
-                {msg.text}
-            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography component="span" sx={{ whiteSpace: "pre-wrap" }}>
+                    {msg.text}
+                </Typography>
+                {msg.buttons && msg.buttons.length > 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {msg.buttons.map((button, idx) => (
+                            <Button
+                                key={idx}
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                    const userMessage = { 
+                                        text: button.title, 
+                                        isBot: false, 
+                                        timestamp: new Date() 
+                                    };
+                                    setMessages(prev => [...prev, userMessage]);
+                                    
+                                    // Send the payload instead of the title
+                                    const payload = button.payload;
+                                    fetch("http://localhost:5005/webhooks/rest/webhook", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({ 
+                                            sender: "user", 
+                                            message: payload.replace("/", "") // Remove the leading slash from the payload
+                                        }),
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        data.forEach((response) => {
+                                            const botMessage = {
+                                                text: response.text,
+                                                isBot: true,
+                                                timestamp: new Date(),
+                                                buttons: response.buttons || []
+                                            };
+                                            setMessages(prev => [...prev, botMessage]);
+                                        });
+                                    })
+                                    .catch(error => {
+                                        console.error("Error in Rasa interaction:", error);
+                                    });
+                                }}
+                                sx={{
+                                    backgroundColor: 'white',
+                                    color: 'primary.main',
+                                    '&:hover': {
+                                        backgroundColor: 'primary.light',
+                                        color: 'white'
+                                    }
+                                }}
+                            >
+                                {button.title}
+                            </Button>
+                        ))}
+                    </Box>
+                )}
+            </Box>
         </Box>
         
-        {/* Timestamp aligned to the right for both bot and user */}
         <Typography 
             variant="caption" 
             sx={{ 
                 color: "text.secondary", 
                 mt: 0.5, 
-                textAlign: "right", // Ensures timestamp is on the right side
+                textAlign: "right",
                 width: "100%"
             }}
         >
