@@ -13,7 +13,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
 import requests
-from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted
+from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted, FollowupAction
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -188,6 +188,31 @@ class ActionMarkFlightSearchComplete(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        # Check if flight is selected
+        selected_flight = tracker.get_slot("selected_flight")
+        if not selected_flight:
+            return []  # Don't mark as complete if no flight is selected
+            
+        # Check if hotel search is already completed
+        hotel_search_completed = tracker.get_slot("hotel_search_completed")
+        
+        if hotel_search_completed:
+            dispatcher.utter_message(
+                text="Great! Both flight and hotel selections are complete. Would you like to save your travel request?",
+                buttons=[
+                    {"title": "Yes, save it", "payload": "/save_travel_request"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
+        else:
+            dispatcher.utter_message(
+                text="Flight selection completed! Would you like to proceed with hotel search?",
+                buttons=[
+                    {"title": "Yes, search hotels", "payload": "/search_hotels"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
+        
         return [SlotSet("flight_search_completed", True)]
 
 class ActionMarkHotelSearchComplete(Action):
@@ -200,16 +225,25 @@ class ActionMarkHotelSearchComplete(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
-        # Check if flight search is also completed
-        if tracker.get_slot("flight_search_completed"):
+        selected_hotel = tracker.get_slot("selected_hotel")
+        if not selected_hotel:
+            return []  
+            
+        events = [SlotSet("hotel_search_completed", True)]
+            
+        flight_search_completed = tracker.get_slot("flight_search_completed")
+        selected_flight = tracker.get_slot("selected_flight")
+        
+        if flight_search_completed and selected_flight:
             dispatcher.utter_message(
-                text="Great! Both flight and hotel searches are complete. Would you like to save your travel request?",
+                text="Great! Both flight and hotel selections are complete. Would you like to generate your travel request?",
                 buttons=[
-                    {"title": "Yes, save it", "payload": "/save_travel_request"},
+                    {"title": "Yes, please", "payload": "/save_travel_request"},
                     {"title": "No, thanks", "payload": "/deny"}
                 ]
             )
-        return [SlotSet("hotel_search_completed", True)]
+        
+        return events
 
 class ActionFetchUserPreferences(Action):
     def name(self) -> str:
@@ -526,12 +560,9 @@ class ActionSearchFlights(Action):
             outbound_details = await self.search_flights(amadeus, origin, destination, departure_date, cabin_class)
             
             if outbound_details:
-                # For single trip, just show outbound flights
                 if trip_type == "single":
-                    # Display options message once
                     dispatcher.utter_message(text="Here are your flight options. Please select one by saying 'select flight 1', 'select flight 2', or 'select flight 3':")
                     
-                    # Display numbered options
                     for idx, flight in enumerate(outbound_details, 1):
                         dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
                     
@@ -540,30 +571,28 @@ class ActionSearchFlights(Action):
                         SlotSet("flight_options", outbound_details)
                     ]
 
-                # For round trip, search and show both outbound and return flights
                 elif trip_type == "round" and return_date:
-                    # Search return flights
                     return_details = await self.search_flights(amadeus, destination, origin, return_date, cabin_class)
                     
                     if return_details:
-                        # First show outbound options
-                        message = f"✈️ Outbound Options ({departure_date}):\n\n"
-                        message += "\n\n".join(outbound_details)
-                        dispatcher.utter_message(text=message)
+                        # Show outbound options
+                        dispatcher.utter_message(text=f"✈️ Outbound Options ({departure_date}):")
+                        for idx, flight in enumerate(outbound_details, 1):
+                            dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
                         
-                        # Then show return options
-                        message = f"\n🔄 Return Options ({return_date}):\n\n"
-                        message += "\n\n".join(return_details)
-                        dispatcher.utter_message(text=message)
+                        # Show return options
+                        dispatcher.utter_message(text=f"🔄 Return Options ({return_date}):")
+                        for idx, flight in enumerate(return_details, 1):
+                            dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
                         
-                        # Display total combinations available
                         total_combinations = len(outbound_details) * len(return_details)
-                        message = (f"\n📊 Total {total_combinations} combinations available. "
-                                 "Please let me know which outbound and return flights you prefer.")
-                        dispatcher.utter_message(text=message)
+                        dispatcher.utter_message(text=f"📊 Total {total_combinations} combinations available. Please select your outbound flight first by saying 'select flight 1', 'select flight 2', or 'select flight 3'")
+                        
                         return [
                             SlotSet("flights_found", True),
-                            ActionExecuted("action_offer_restart")
+                            SlotSet("outbound_options", outbound_details),
+                            SlotSet("return_options", return_details),
+                            SlotSet("flight_options", outbound_details)  # Initially set to outbound options
                         ]
                     else:
                         dispatcher.utter_message(
@@ -571,7 +600,6 @@ class ActionSearchFlights(Action):
                         )
                         return [
                             SlotSet("flights_found", False),
-                            ActionExecuted("action_offer_restart")
                         ]
             else:
                 dispatcher.utter_message(
@@ -579,20 +607,17 @@ class ActionSearchFlights(Action):
                 )
                 return [
                     SlotSet("flights_found", False),
-                    ActionExecuted("action_offer_restart")
                 ]
                 
         except ResponseError as error:
             logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
             return [
                     SlotSet("flights_found", False),
-                    ActionExecuted("action_offer_restart")
                 ]
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return [
                     SlotSet("flights_found", False),
-                    ActionExecuted("action_offer_restart")
                 ]
 
     
@@ -970,9 +995,9 @@ class ActionSelectFlight(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        # Get the message text to extract the flight option number
         message = tracker.latest_message.get('text', '').lower()
         flight_number = None
+        trip_type = tracker.get_slot("trip_type")
         
         # Extract the flight number from the message
         if '1' in message or 'first' in message:
@@ -982,34 +1007,64 @@ class ActionSelectFlight(Action):
         elif '3' in message or 'third' in message:
             flight_number = 2
 
-        # Get stored flight details from previous search
-        flight_options = tracker.get_slot("flight_options")
-        
-        if not flight_options or flight_number is None:
-            dispatcher.utter_message(text="Sorry, I couldn't find the flight option you're referring to.")
-            return []
-
         try:
-            selected_flight = flight_options[flight_number]
+            if trip_type == "single":
+                flight_options = tracker.get_slot("flight_options")
+                if not flight_options or flight_number is None:
+                    dispatcher.utter_message(text="Sorry, I couldn't find the flight option you're referring to.")
+                    return []
+                    
+                selected_flight = flight_options[flight_number]
+                confirmation_message = (
+                    f"✈️ You've selected this flight:\n\n"
+                    f"{selected_flight}\n\n"
+                )
+                dispatcher.utter_message(text=confirmation_message)
+                return [SlotSet("selected_flight", selected_flight)]
+                
+            elif trip_type == "round":
+                selected_outbound = tracker.get_slot("selected_outbound")
+                outbound_options = tracker.get_slot("outbound_options")
+                return_options = tracker.get_slot("return_options")
+                
+                if not selected_outbound:
+                    # Selecting outbound flight
+                    if not outbound_options or flight_number is None:
+                        dispatcher.utter_message(text="Sorry, I couldn't find the outbound flight option you're referring to.")
+                        return []
+                        
+                    selected_flight = outbound_options[flight_number]
+                    confirmation_message = (
+                        f"✈️ You've selected this outbound flight:\n\n"
+                        f"{selected_flight}\n\n"
+                        f"Now, please select your return flight by saying 'select flight 1', 'select flight 2', or 'select flight 3'"
+                    )
+                    dispatcher.utter_message(text=confirmation_message)
+                    # Switch flight_options to return options for next selection
+                    return [
+                        SlotSet("selected_outbound", selected_flight),
+                        SlotSet("flight_options", return_options)
+                    ]
+                else:
+                    # Selecting return flight
+                    if not return_options or flight_number is None:
+                        dispatcher.utter_message(text="Sorry, I couldn't find the return flight option you're referring to.")
+                        return []
+                        
+                    selected_return = return_options[flight_number]
+                    confirmation_message = (
+                        f"🎉 Perfect! Here's your round trip selection:\n\n"
+                        f"OUTBOUND:\n{selected_outbound}\n\n"
+                        f"RETURN:\n{selected_return}\n\n"
+                    )
+                    dispatcher.utter_message(text=confirmation_message)
+                    return [
+                        SlotSet("selected_return", selected_return),
+                        SlotSet("selected_flight", f"{selected_outbound}\n\nRETURN:\n{selected_return}")
+                    ]
             
-            # Format confirmation message
-            confirmation_message = (
-                f"✈️ You've selected this flight:\n\n"
-                f"{selected_flight}\n\n"
-                f"Would you like to confirm this selection?"
-            )
-            
-            dispatcher.utter_message(
-                text=confirmation_message,
-                # buttons=[
-                #     {"title": "Yes, confirm", "payload": "/confirm_flight"},
-                #     {"title": "No, choose different flight", "payload": "/deny"}
-                # ]
-            )
-            
-            return [SlotSet("selected_flight", selected_flight)]
-            
-        except (IndexError, TypeError):
+        except (IndexError, TypeError) as e:
+            logger.error(f"Error selecting flight: {str(e)}")
             dispatcher.utter_message(text="Sorry, that flight option is not available.")
             return []
 
@@ -1017,38 +1072,34 @@ class ActionSelectHotel(Action):
     def name(self) -> Text:
         return "action_select_hotel"
 
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Get the selected hotel index (1-based)
+        message = tracker.latest_message.get('text', '')
+        hotel_options = tracker.get_slot("hotel_options")
         
-        hotel_options = tracker.get_slot('hotel_options')
-        selected_index = next(
-            (int(num) for num in re.findall(r'\d+', tracker.latest_message.get('text', ''))),
-            None
-        )
-
-        if not selected_index or selected_index > len(hotel_options):
-            dispatcher.utter_message(text="Please select a valid hotel number.")
+        if not hotel_options:
+            dispatcher.utter_message(text="Sorry, no hotels are available to select from.")
             return []
-
-        selected_hotel = hotel_options[selected_index - 1]
-
-        # Format confirmation message with buttons in a single message
-        confirmation_message = (
-            f"🏨 You've selected this hotel:\n\n"
-            f"{selected_hotel}\n\n"
-            f"Would you like to confirm this selection?"
-        )
-        
-        dispatcher.utter_message(
-            text=confirmation_message,
-            # buttons=[
-            #     {"title": "Yes, confirm", "payload": "/confirm_booking"},
-            #     {"title": "No, choose different hotel", "payload": "/deny"}
-            # ]
-        )
-        
-        return [SlotSet("selected_hotel", selected_hotel)]
+            
+        try:
+            # Extract hotel details and set as selected_hotel
+            selected_hotel = hotel_options[0]  # For "hotel 1" or "1"
+            dispatcher.utter_message(text=f"🏨 You've selected this hotel:\n\n{selected_hotel}")
+            
+            # Return both the slot update and follow_up_action
+            return [
+                SlotSet("selected_hotel", selected_hotel),
+                FollowupAction("action_mark_hotel_search_complete")
+            ]
+            
+        except Exception as e:
+            dispatcher.utter_message(text=f"Error selecting hotel: {str(e)}")
+            return []
 
 # class ActionConfirmHotelBooking(Action):
 #     def name(self) -> Text:

@@ -17,14 +17,12 @@ intents:
   - bot_challenge
   - choose_trip_type
   - select_flight
-  # - confirm_flight
   - save_travel_request
   - affirm
   - deny
   - mood_unhappy
   - check_token_status
   - select_hotel
-  # - confirm_booking
 
 entities:
   - airport_code
@@ -166,6 +164,30 @@ slots:
 
   selected_hotel:
     type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
+
+  selected_outbound:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
+      
+  selected_return:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
+
+  outbound_options:
+    type: list
+    influence_conversation: true
+    mappings:
+      - type: custom
+      
+  return_options:
+    type: list
     influence_conversation: true
     mappings:
       - type: custom

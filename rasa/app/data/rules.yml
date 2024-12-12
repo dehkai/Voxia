@@ -117,20 +117,9 @@ rules:
     - action: action_mark_flight_search_complete
     - action: action_listen
 
-  - rule: Select hotel
-    condition:
-      - active_loop: null
-      - slot_was_set:
-        - hotel_search_completed: true
+  - rule: Handle hotel selection
     steps:
       - intent: select_hotel
       - action: action_select_hotel
-
-  # - rule: Confirm booking
-  #   condition:
-  #     - active_loop: null
-  #     - slot_was_set:
-  #       - selected_hotel: true
-  #   steps:
-  #     - intent: confirm_booking
-  #     - action: action_confirm_hotel_booking
+      - action: action_mark_hotel_search_complete
+      - action: action_listen
