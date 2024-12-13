@@ -3,10 +3,10 @@ import { alpha } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import AppNavbar from '../components/admin_dashboard/AppNavbar';
 import Header from '../components/admin_dashboard/Header';
-import Typography from '@mui/material/Typography';
-import TravelReportsTable from '../components/admin_dashboard/TravelRequestTable';
+import TravelReportsTable from '../components/admin_dashboard/EmployeeDetailsTable';
 import SideMenu from '../components/admin_dashboard/SideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
@@ -54,7 +54,6 @@ const Dashboard = React.memo(() => {
           <Stack
             spacing={2}
             sx={{
-              alignItems: 'center',
               mx: 3,
               pb: 5,
               mt: { xs: 8, md: 0 },
@@ -69,7 +68,7 @@ const Dashboard = React.memo(() => {
                 alignSelf: 'flex-start', // Aligns the text to the left
               }}
             >
-              Employees' Travel Request
+              Employees' Details
             </Typography>
             <TravelReportsTable />
             {/* Add Copyright Notice */}

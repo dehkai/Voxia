@@ -6,7 +6,7 @@ import Stack from '@mui/material/Stack';
 import AppNavbar from '../components/admin_dashboard/AppNavbar';
 import Header from '../components/admin_dashboard/Header';
 import Typography from '@mui/material/Typography';
-import TravelReportsTable from '../components/admin_dashboard/TravelRequestTable';
+import TravelReportsTable from '../components/admin_dashboard/TravelReportsTable';
 import SideMenu from '../components/admin_dashboard/SideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +69,7 @@ const Dashboard = React.memo(() => {
                 alignSelf: 'flex-start', // Aligns the text to the left
               }}
             >
-              Employees' Travel Request
+              Employees' Travel Report
             </Typography>
             <TravelReportsTable />
             {/* Add Copyright Notice */}

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { requestRows as rows, requestColumns as columns } from './internals/data/travelRequestData'; // Updated import names
+import { reportRows as rows, reportColumns as columns } from './internals/data/travelReportsData'; // Updated import names
 
 export default function TravelReportsTable() {
   return (

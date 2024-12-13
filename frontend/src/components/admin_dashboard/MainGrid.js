@@ -3,51 +3,61 @@ import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'; // Import the icon
+import FlightTakeoff from '@mui/icons-material/FlightTakeoff';
+import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles'; // Import to access theme
+import useMediaQuery from '@mui/material/useMediaQuery'; // Import to handle screen size changes
 import Copyright from './internals/components/Copyright';
-// import ChartUserByCountry from './ChartUserByCountry';
-// import CustomizedTreeView from './CustomizedTreeView';
 import CustomizedDataGrid from './CustomizedDataGrid';
-import HighlightedCard from './HighlightedCard';
+import DetailsCard from './DetailsCard';
 import ReportsCard from './ReportsCard';
 import StatCard from './StatCard';
 
 const data = [
   {
-    title: 'Number of Employees', // Changed from "Users" to "Number of Employees"
-    value: '50', // Update with actual employee count
+    title: 'Number of Employees',
+    value: '30',
     interval: 'All Time',
     trend: 'up',
     data: [
-      200, 24, 220, 260, 240, 380, 100, 240, 280, 240, 300, 340, 320, 360, 340, 380,
-      360, 400, 380, 420, 400, 640, 340, 460, 440, 480, 460, 600, 880, 920,
-    ],
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      21, 22, 23, 24, 25, 26, 27, 28, 29, 30 
+    ] 
   },
   {
-    title: 'Number of Travel Requests', // Changed from "Conversions" to "Number of Travel Requests"
-    value: '20', // Update with actual travel request count
+    title: 'Number of Travel Requests',
+    value: '25',
     interval: 'Overall',
-    trend: 'down',
+    trend: 'up',
     data: [
-      1640, 1250, 970, 1130, 1050, 900, 720, 1080, 900, 450, 920, 820, 840, 600, 820,
-      780, 800, 760, 380, 740, 660, 620, 840, 500, 520, 480, 400, 360, 300, 220,
-    ],
-  },
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
+    ]  },
   {
-    title: 'Number of Pending Requests', // Changed from "Event count" to "Number of Pending Requests"
-    value: '10', // Update with actual pending request count
+    title: 'Number of Pending Requests',
+    value: '15',
     interval: 'Overall',
-    trend: 'neutral',
+    trend: 'up',
     data: [
-      500, 400, 510, 530, 520, 600, 530, 520, 510, 730, 520, 510, 530, 620, 510, 530,
-      520, 410, 530, 520, 610, 530, 520, 610, 530, 420, 510, 430, 520, 510,
-    ],
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+    ]  
   },
 ];
 
 export default function MainGrid() {
+  const navigate = useNavigate(); // Initialize useNavigate hook for navigation
+  const theme = useTheme(); // Access the theme
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Check if it's a small screen
+
+  const handleNavigate = () => {
+    navigate('/travel-requests'); // Navigate to TravelRequestPage.js route
+  };
+
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      {/* cards */}
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
         Overview
       </Typography>
@@ -63,21 +73,35 @@ export default function MainGrid() {
           </Grid>
         ))}
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <HighlightedCard />
+          <DetailsCard />
         </Grid>
       </Grid>
-      <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-        At a Glance - Employees' Travel Request
-      </Typography>
+
+      {/* View All Employees' Travel Request with Button */}
+      <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+      <FlightTakeoff sx={{ mr: 3 }} /> {/* Flight icon with margin-right */}
+        <Typography component="h2" variant="h6" sx={{ mr: 3 }}> {/* Adjusted margin-right */}
+          View Employees' Travel Request
+        </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          color="primary"
+          endIcon={<ChevronRightRoundedIcon />} // Icon on the right side
+          fullWidth={isSmallScreen} // Dynamically set fullWidth for small screens
+          onClick={handleNavigate}
+        >
+          View Request
+        </Button>
+      </Box>
+
       <Grid container spacing={2} columns={12}>
         <Grid size={{ xs: 12, lg: 9 }}>
           <CustomizedDataGrid />
         </Grid>
         <Grid size={{ xs: 12, lg: 3 }}>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
-            {/* <CustomizedTreeView /> */}
-            {/* <ChartUserByCountry /> */}
-            { <ReportsCard/> }
+            { <ReportsCard /> }
           </Stack>
         </Grid>
       </Grid>

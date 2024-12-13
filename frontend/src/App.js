@@ -12,10 +12,11 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import UserProfile from "./pages/User_Profile";
 import TravelRequestsPage from './pages/TravelRequestsPage'; // Import Travel Requests Page
+import EmployeeDetailsPage from './pages/EmployeeDetailsPage'; // Import Employee Details Page
+import TravelReportsPage from './pages/TravelReportsPage'; // Import Travel Reports Page
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
 import AdminLayout from "./layout/AdminLayout"; 
 import EmployeeLayout from "./layout/EmployeeLayout"; 
-import NavbarBreadcrumbs from './components/employee_dashboard/NavbarBreadcrumbs'; // Import Breadcrumbs Component
 
 function App() {
   const [authState, setAuthState] = useState(isAuthenticated());
@@ -96,6 +97,12 @@ function App() {
 
           {/* Pages for Travel Request*/}
           <Route path="/travel-requests" element={<TravelRequestsPage />} />
+
+          {/* Pages for Employees' Details*/}
+          <Route path="/employee-details" element={<EmployeeDetailsPage />} />
+
+          {/* Pages for Travel' Report*/}
+          <Route path="/travel-reports" element={<TravelReportsPage />} />
 
           {/* Root layout for all other routes */}
           <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>
