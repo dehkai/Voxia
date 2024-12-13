@@ -15,6 +15,7 @@
 
 # Rasa cache and temporary files
 rasa/**/*.db
+.config/
 rasa/cache/
 *.pkl
 *.json

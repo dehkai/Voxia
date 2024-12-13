@@ -14,25 +14,51 @@ nlu:
       
   - intent: provide_email
     examples: |
-      - alex@origtek.com.my
+      - my email is [user@example.com](email)
+      - contact me at [contact@domain.com](email)
+      - [user@example.com](email)
+      - My email is [john.doe@company.com](email)
+      - You can reach me at [user123@domain.net](email)
+      - Use [jane.smith@workplace.org](email) for authentication
+      - My email address is [hello@business.com](email)
+      - Contact me via [support@service.net](email)
+      - Here's my email: [info@website.io](email)
+      - Send details to [user@domain.co.uk](email)
+      - I use [contact@company.com](email) as my email
+      - Try [test.user@domain.com](email)
+      - Please use [name@provider.net](email)
+      - The email is [user.name@service.com](email)
+      - It's [contact@business.org](email)
+      - Reach out to [me@domain.com](email)
+      - [support@company.com](email) is my email
+      - [user@government.gov](email) is my email address
+      # Origtek emails
       - my email is [alex@origtek.com.my](email)
-      - contact me at [alex@origtek.com.my](email)
-      - [alex@origtek.com.my](email)
-      - My email is [john.doe@example.com](email)
-      - You can reach me at [contact@domain.com](email)
-      - Use [jane.doe@workplace.com](email) for authentication
-      - My email address is [hello@company.org](email)
-      - Contact me via [support@business.net](email)
-      - Here's my email: [info@site.io](email)
-      - Send details to [feedback@domain.co.uk](email)
-      - I use [alex@origtek.com.my](email) as my email
-      - Try [example.email@domain.com](email)
-      - Please use [user123@testing.net](email)
-      - The email is [abc.def@xyz.com](email)
-      - It's [someone@service.org](email)
-      - Reach out to [me@myplace.com](email)
-      - [test.user@site.com](email) is the one
-      - [admin@company.gov](email) is my email
+      - contact me at [support@origtek.com.my](email)
+      - [sales@origtek.com.my](email)
+      - use [admin@origtek.com.my](email)
+      - [info@origtek.com.my](email)
+      - [hr@origtek.com.my](email)
+      - [tech@origtek.com.my](email)
+      - [developer@origtek.com.my](email)
+      # Gmail addresses
+      - my email is [user@gmail.com](email)
+      - [username123@gmail.com](email)
+      - contact me at [firstname.lastname@gmail.com](email)
+      - [businessname@gmail.com](email)
+      - use [myemail123@gmail.com](email)
+      - [personal.email@gmail.com](email)
+      - my gmail is [work.email@gmail.com](email)
+      - [user.name2023@gmail.com](email)
+      # Hotmail addresses
+      - my email is [user@hotmail.com](email)
+      - [username123@hotmail.com](email)
+      - contact at [firstname.lastname@hotmail.com](email)
+      - [myname2023@hotmail.com](email)
+      - use [personal.email@hotmail.com](email)
+      - [business.contact@hotmail.com](email)
+      - my hotmail is [user.name@hotmail.com](email)
+      - [contact.me@hotmail.com](email)
 
   - intent: check_token_status
     examples: |
@@ -154,6 +180,7 @@ nlu:
 
   - intent: search_flights
     examples: |
+      - book a flight
       - I want to book a flight
       - I need to find a flight
       - Search for flights
@@ -291,6 +318,7 @@ nlu:
   - intent: single_trip
     examples: |
       - single trip
+      - Single Trip
       - one way
       - single
       - just one way
@@ -304,6 +332,7 @@ nlu:
   - intent: round_trip
     examples: |
       - round trip
+      - Round Trip
       - return flight
       - two way
       - round
@@ -328,3 +357,40 @@ nlu:
       - returning [2024-11-20](date)
       - my return is [2024-12-25](date)
       - return journey on [2024-12-31](date)
+
+  - intent: select_flight
+    examples: |
+      - I want flight option 1
+      - select first flight
+      - choose option 1
+      - book the first flight
+      - I'll take flight 1
+      - option 1 please
+      - first option
+      - flight option 2
+      - second flight
+      - option 2
+      - flight 2
+      - third option
+      - flight 3
+      - option 3
+      - last flight
+
+  - intent: select_hotel
+    examples: |
+      - I want hotel 1
+      - book hotel 1
+      - select hotel 1
+      - choose hotel 1
+      - first hotel
+      - hotel number 1
+      - 1
+
+
+  - intent: save_travel_request
+    examples: |
+      - save my travel request
+      - save this request
+      - please save my travel request
+      - save my booking
+      - save my travel plans
