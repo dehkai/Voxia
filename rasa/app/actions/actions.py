@@ -99,11 +99,16 @@ class ActionSaveTravelRequest(Action):
             travel_request = {
                 "request_number": self._generate_request_number(),
                 "user_id": None,  # Will be set after user lookup
+                "user_email": travel_request_preview.get("user_email"),
                 "status": "pending",
-                "type": travel_request_preview["type"],
-                "purpose": travel_request_preview["purpose"],
+                "trip_type": travel_request_preview["flight_details"]["trip_type"],
                 "total_cost": travel_request_preview["total_cost"],
-                "flight_details": travel_request_preview["flight_details"],
+                "flight_details": {
+                    "trip_type": travel_request_preview["flight_details"]["trip_type"],
+                    "origin": travel_request_preview["flight_details"]["origin"],
+                    "destination": travel_request_preview["flight_details"]["destination"],
+                    "outbound_flight": travel_request_preview["flight_details"]["outbound_flight"],
+                },
                 "hotel_details": travel_request_preview["hotel_details"],
                 "approval": {
                     "status": "pending",
@@ -116,14 +121,26 @@ class ActionSaveTravelRequest(Action):
                 "notes": []
             }
 
+            # Add return flight details if it's a round trip
+            if travel_request_preview["flight_details"]["trip_type"] == "round":
+                travel_request["flight_details"]["return_flight"] = (
+                    travel_request_preview["flight_details"]["return_flight"]
+                )
+
             # Save to MongoDB
             db_client = MongoDBClient()
             result = db_client.database["travel_requests"].insert_one(travel_request)
 
             if result.inserted_id:
+                # Create a more detailed confirmation message based on trip type
+                trip_type = travel_request["trip_type"]
+                total_cost = travel_request["total_cost"]
+                
                 confirmation_message = (
                     f"✅ Travel Request Saved Successfully!\n\n"
                     f"📋 Request Number: {travel_request['request_number']}\n"
+                    f"✈️ Trip Type: {trip_type.title()}\n"
+                    f"💰 Total Cost: RM {total_cost:.2f}\n"
                     f"🔍 Status: Pending Approval\n\n"
                     f"Your request has been submitted and is pending approval.\n"
                     f"You will be notified once it's reviewed."
@@ -140,8 +157,9 @@ class ActionSaveTravelRequest(Action):
                 ]
 
         except Exception as e:
+            logger.error(f"Error saving travel request: {str(e)}")
             dispatcher.utter_message(
-                text=f"Error saving travel request: {str(e)}"
+                text="Sorry, there was an error saving your travel request. Please try again."
             )
             return []
 
@@ -1110,82 +1128,146 @@ class ActionGenerateTravelRequest(Action):
 
             # Parse flight details
             flight_lines = selected_flight.split('\n')
-            route_info = flight_lines[7].replace('📍 From: ', '').split(' to ')
-            
-            flight_details = {
-                "trip_type": "single",  # or get from slot
-                "origin": {
-                    "airport_code": route_info[0],
-                    "city": tracker.get_slot("origin"),
-                    "country": ""  # Could be fetched from a lookup service
-                },
-                "destination": {
-                    "airport_code": route_info[1],
-                    "city": tracker.get_slot("destination"),
-                    "country": ""
-                },
-                "outbound_flight": {
-                    "airline": flight_lines[0].replace('🛩️ Airline: ', ''),
-                    "flight_number": flight_lines[2].replace('🛫 Flight: ', ''),
-                    "cabin_class": flight_lines[1].replace('💺 Cabin Class: ', ''),
-                    "departure_datetime": flight_lines[5].replace('🛫 Departure: ', ''),
-                    "arrival_datetime": flight_lines[6].replace('🛬 Arrival: ', ''),
-                    "duration": flight_lines[4].replace('⏱️ Duration: ', ''),
-                    "price": float(flight_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
-                    "layovers": []  # Could be parsed from flight details if available
+            trip_type = tracker.get_slot("trip_type")
+
+            if trip_type == "round":
+                # Split the combined flight string into outbound and return sections
+                outbound_section = selected_flight.split('\n\nRETURN:\n')[0]
+                return_section = selected_flight.split('\n\nRETURN:\n')[1]
+                
+                outbound_lines = outbound_section.split('\n')
+                return_lines = return_section.split('\n')
+                
+                # Parse route info for both flights
+                outbound_route = outbound_lines[7].replace('📍 From: ', '').split(' to ')
+                return_route = return_lines[7].replace('📍 From: ', '').split(' to ')
+                
+                flight_details = {
+                    "trip_type": "round",
+                    "origin": {
+                        "airport_code": outbound_route[0],
+                        "city": tracker.get_slot("origin"),
+                        "country": ""
+                    },
+                    "destination": {
+                        "airport_code": outbound_route[1],
+                        "city": tracker.get_slot("destination"),
+                        "country": ""
+                    },
+                    "outbound_flight": {
+                        "airline": outbound_lines[0].replace('🛩️ Airline: ', ''),
+                        "flight_number": outbound_lines[2].replace('🛫 Flight: ', ''),
+                        "cabin_class": outbound_lines[1].replace('💺 Cabin Class: ', ''),
+                        "departure_datetime": outbound_lines[5].replace('🛫 Departure: ', ''),
+                        "arrival_datetime": outbound_lines[6].replace('🛬 Arrival: ', ''),
+                        "duration": outbound_lines[4].replace('⏱️ Duration: ', ''),
+                        "price": float(outbound_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                        "layovers": []
+                    },
+                    "return_flight": {
+                        "airline": return_lines[0].replace('🛩️ Airline: ', ''),
+                        "flight_number": return_lines[2].replace('🛫 Flight: ', ''),
+                        "cabin_class": return_lines[1].replace('💺 Cabin Class: ', ''),
+                        "departure_datetime": return_lines[5].replace('🛫 Departure: ', ''),
+                        "arrival_datetime": return_lines[6].replace('🛬 Arrival: ', ''),
+                        "duration": return_lines[4].replace('⏱️ Duration: ', ''),
+                        "price": float(return_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                        "layovers": []
+                    }
                 }
-            }
+            else:
+                # Existing single trip parsing logic
+                route_info = flight_lines[7].replace('📍 From: ', '').split(' to ')
+                flight_details = {
+                    "trip_type": "single",
+                    "origin": {
+                        "airport_code": route_info[0],
+                        "city": tracker.get_slot("origin"),
+                        "country": ""
+                    },
+                    "destination": {
+                        "airport_code": route_info[1],
+                        "city": tracker.get_slot("destination"),
+                        "country": ""
+                    },
+                    "outbound_flight": {
+                        "airline": flight_lines[0].replace('🛩️ Airline: ', ''),
+                        "flight_number": flight_lines[2].replace('🛫 Flight: ', ''),
+                        "cabin_class": flight_lines[1].replace('💺 Cabin Class: ', ''),
+                        "departure_datetime": flight_lines[5].replace('🛫 Departure: ', ''),
+                        "arrival_datetime": flight_lines[6].replace('🛬 Arrival: ', ''),
+                        "duration": flight_lines[4].replace('⏱️ Duration: ', ''),
+                        "price": float(flight_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                        "layovers": []
+                    }
+                }
 
             # Parse hotel details
             hotel_lines = selected_hotel.split('\n')
-            check_in = hotel_lines[1].replace('📅 Check-in: ', '')
-            check_out = hotel_lines[2].replace('📅 Check-out: ', '')
+            check_in = hotel_lines[1].replace('📅 Check-in: ', '').strip()
+            check_out = hotel_lines[2].replace('📅 Check-out: ', '').strip()
             price = float(hotel_lines[4].replace('💰 Price: RM ', '').replace(',', ''))
             
             # Calculate nights
-            check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
-            check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
-            nights = (check_out_date - check_in_date).days
-            
+            try:
+                check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+                check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+                nights = (check_out_date - check_in_date).days
+            except ValueError as e:
+                logger.error(f"Date parsing error: {str(e)}")
+                dispatcher.utter_message(text="Error processing hotel dates. Please try again.")
+                return []
+
             hotel_details = {
                 "city": tracker.get_slot("city"),
-                "country": "",  # Could be fetched from a lookup service
-                "hotel_name": hotel_lines[0].replace('🏨 Hotel: ', ''),
-                "room_type": hotel_lines[3].replace('🏢 Room Category: ', ''),
+                "country": "",  
+                "hotel_name": hotel_lines[0].replace('🏨 Hotel: ', '').strip(),
+                "room_type": hotel_lines[3].replace('🏢 Room Category: ', '').strip(),
                 "check_in": check_in,
                 "check_out": check_out,
                 "nights": nights,
                 "price_per_night": price / nights if nights > 0 else price,
                 "total_price": price,
                 "rating": int(''.join(filter(str.isdigit, hotel_lines[5]))),
-                "amenities": []  # Could be parsed from hotel details if available
+                "amenities": []
             }
 
-            # Create travel request preview
-            travel_request = {
-                "user_email": user_email,
-                "status": "pending",
-                "type": "business",  # Could be made selectable
-                "purpose": "",  # Could be made input field
-                "total_cost": flight_details["outbound_flight"]["price"] + hotel_details["total_price"],
-                "flight_details": flight_details,
-                "hotel_details": hotel_details
-            }
+            # Calculate total cost based on trip type
+            total_cost = flight_details["outbound_flight"]["price"]
+            if trip_type == "round":
+                total_cost += flight_details["return_flight"]["price"]
+            total_cost += hotel_details["total_price"]
 
-            # Generate preview message
+            # Generate preview message with conditional return flight details
             preview_message = (
                 f"📋 Travel Request Preview\n\n"
                 f"✈️ Flight Details:\n"
                 f"• Trip Type: {flight_details['trip_type'].title()}\n"
-                f"• Route: {flight_details['origin']['airport_code']} → {flight_details['destination']['airport_code']}\n"
+                f"• Route: {flight_details['origin']['airport_code']} → {flight_details['destination']['airport_code']}\n\n"
+                f"Outbound Flight:\n"
                 f"• Airline: {flight_details['outbound_flight']['airline']}\n"
                 f"• Flight: {flight_details['outbound_flight']['flight_number']}\n"
                 f"• Class: {flight_details['outbound_flight']['cabin_class']}\n"
                 f"• Departure: {flight_details['outbound_flight']['departure_datetime']}\n"
                 f"• Arrival: {flight_details['outbound_flight']['arrival_datetime']}\n"
                 f"• Duration: {flight_details['outbound_flight']['duration']}\n"
-                f"• Cost: RM {flight_details['outbound_flight']['price']:.2f}\n\n"
-                f"🏨 Hotel Details:\n"
+                f"• Cost: RM {flight_details['outbound_flight']['price']:.2f}\n"
+            )
+
+            if trip_type == "round":
+                preview_message += (
+                    f"\nReturn Flight:\n"
+                    f"• Airline: {flight_details['return_flight']['airline']}\n"
+                    f"• Flight: {flight_details['return_flight']['flight_number']}\n"
+                    f"• Class: {flight_details['return_flight']['cabin_class']}\n"
+                    f"• Departure: {flight_details['return_flight']['departure_datetime']}\n"
+                    f"• Arrival: {flight_details['return_flight']['arrival_datetime']}\n"
+                    f"• Duration: {flight_details['return_flight']['duration']}\n"
+                    f"• Cost: RM {flight_details['return_flight']['price']:.2f}\n"
+                )
+
+            preview_message += (
+                f"\n🏨 Hotel Details:\n"
                 f"• Hotel: {hotel_details['hotel_name']}\n"
                 f"• Room: {hotel_details['room_type']}\n"
                 f"• Check-in: {hotel_details['check_in']}\n"
@@ -1193,10 +1275,19 @@ class ActionGenerateTravelRequest(Action):
                 f"• Nights: {hotel_details['nights']}\n"
                 f"• Price per Night: RM {hotel_details['price_per_night']:.2f}\n"
                 f"• Total Hotel Cost: RM {hotel_details['total_price']:.2f}\n"
-                f"• Rating: {hotel_details['rating']}⭐\n\n"
-                f"💰 Total Trip Cost: RM {travel_request['total_cost']:.2f}\n\n"
+                f"• Rating: {hotel_details['rating']} Star\n\n"
+                f"💰 Total Trip Cost: RM {total_cost:.2f}\n\n"
                 f"Would you like to confirm and save this travel request?"
             )
+
+            # Create the complete travel request object
+            travel_request = {
+                "flight_details": flight_details,
+                "hotel_details": hotel_details,
+                "total_cost": total_cost,
+                "user_email": user_email,
+                "preview_message": preview_message
+            }
 
             # Show preview with confirmation buttons
             dispatcher.utter_message(

@@ -24,7 +24,7 @@ rules:
       - action: flight_search_form
       - active_loop: flight_search_form
 
-  - rule: Submit flight search form and handle success
+  - rule: Submit flight search form
     condition:
       - active_loop: flight_search_form
     steps:
@@ -32,28 +32,88 @@ rules:
       - active_loop: null
       - action: action_search_flights
       - slot_was_set:
-        - flights_found: true
-      - action: action_mark_flight_search_complete
+          - flights_found: true
       - action: action_listen
 
-  - rule: Submit flight search form and handle failure
+  - rule: Mark single trip flight search complete
     condition:
-      - active_loop: flight_search_form
-    steps:
-      - action: flight_search_form
-      - active_loop: null
-      - action: action_search_flights
       - slot_was_set:
-          - flights_found: false
-      - action: utter_no_flights_found
+          - trip_type: "single"
+      - slot_was_set:
+          - flights_found: true
+      - slot_was_set:
+          - flight_search_completed: false
+    steps:
+      - action: action_mark_flight_search_complete
+      - slot_was_set:
+          - flight_search_completed: true
+      - action: action_listen
+
+  - rule: Handle single flight selection
+    condition:
+      - slot_was_set:
+          - trip_type: "single"
+      - slot_was_set:
+          - flights_found: true
+      - slot_was_set:
+          - flight_search_completed: false
+    steps:
+      - intent: select_flight
+      - action: action_select_flight
+      - slot_was_set:
+          - selected_outbound: null
+          - selected_return: null
+      - action: action_mark_flight_search_complete
+      - slot_was_set:
+          - flight_search_completed: true
+      - action: action_listen
+
+  - rule: Handle outbound flight selection
+    condition:
+      - slot_was_set:
+          - trip_type: "round"
+      - slot_was_set:
+          - flights_found: true
+      - slot_was_set:
+          - selected_outbound: null
+    steps:
+      - intent: select_flight
+      - action: action_select_flight
+      - slot_was_set:
+          - selected_outbound: true
+          - selected_return: null
+      - action: action_listen
+
+  - rule: Handle return flight selection
+    condition:
+      - slot_was_set:
+          - trip_type: "round"
+      - slot_was_set:
+          - flights_found: true
+      - slot_was_set:
+          - selected_outbound: true
+    steps:
+      - intent: select_flight
+      - action: action_select_flight
+      - slot_was_set:
+          - selected_return: true
+      - action: action_mark_flight_search_complete
+      - slot_was_set:
+          - flight_search_completed: true
       - action: action_listen
 
   - rule: Activate hotel search form
+    condition:
+      - slot_was_set:
+          - flight_search_completed: true
+      - slot_was_set:
+          - hotel_search_completed: false
     steps:
       - intent: search_hotels
       - action: action_reset_hotel_form
       - action: hotel_search_form
       - active_loop: hotel_search_form
+      - action: action_listen
 
   - rule: Submit hotel search form
     condition:
@@ -63,6 +123,28 @@ rules:
       - active_loop: null
       - action: action_search_hotels
       - action: action_mark_hotel_search_complete
+      - slot_was_set:
+          - hotel_search_completed: true
+      - action: action_listen
+
+  - rule: Handle save travel request
+    condition:
+      - slot_was_set:
+          - flight_search_completed: true
+      - slot_was_set:
+          - hotel_search_completed: true
+    steps:
+      - intent: save_travel_request
+      - action: action_generate_travel_request
+      - action: action_listen
+
+  - rule: Handle save request confirmation
+    condition:
+      - slot_was_set:
+          - travel_request_preview: true
+    steps:
+      - intent: confirm_save_request
+      - action: action_save_travel_request
       - action: action_listen
 
   - rule: Complete hotel search
@@ -109,13 +191,6 @@ rules:
       - intent: choose_trip_type
       - action: utter_ask_trip_type
       - action: action_listen
-
-  - rule: Handle flight selection
-    steps:
-    - intent: select_flight
-    - action: action_select_flight
-    - action: action_mark_flight_search_complete
-    - action: action_listen
 
   - rule: Handle hotel selection
     steps:
