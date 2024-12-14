@@ -394,3 +394,13 @@ nlu:
       - please save my travel request
       - save my booking
       - save my travel plans
+
+  - intent: confirm_save_request
+    examples: |
+      - yes save it
+      - confirm save
+      - save the request
+      - proceed with saving
+      - yes please save
+      - save my request
+      - confirm and save

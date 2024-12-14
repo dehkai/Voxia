@@ -9,10 +9,24 @@ stories:
   - story: fetch token and preferences silently
     steps:
       - intent: provide_email
+        entities:
+          - email
       - action: action_fetch_auth_token
       - slot_was_set:
           - auth_token: null
       - action: action_fetch_user_preferences
+      - action: action_listen
+
+  - story: fetch token and preferences with explicit email
+    steps:
+      - intent: provide_email
+        entities:
+          - email: "ydk1421@gmail.com"
+      - action: action_fetch_auth_token
+      - slot_was_set:
+          - auth_token: null
+      - action: action_fetch_user_preferences
+      - action: action_listen
 
   - story: display preferences on request
     steps:
@@ -226,6 +240,8 @@ stories:
         - hotel_search_completed: true
     # Optionally save the request
     - intent: save_travel_request
+    - action: action_generate_travel_request
+    - intent: confirm_save_request
     - action: action_save_travel_request
     - action: action_listen
 
@@ -259,3 +275,12 @@ stories:
         - trip_type: "single"
     - action: flight_search_form
     - active_loop: flight_search_form
+
+  - story: generate and save travel request
+    steps:
+      - intent: save_travel_request
+      - action: action_generate_travel_request
+      - action: action_listen
+      - intent: confirm_save_request
+      - action: action_save_travel_request
+      - action: action_listen

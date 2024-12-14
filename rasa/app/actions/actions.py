@@ -14,6 +14,7 @@ from pymongo.database import Database
 from pymongo.collection import Collection
 import requests
 from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted, FollowupAction
+import random
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -74,107 +75,73 @@ class ActionSaveTravelRequest(Action):
     def name(self) -> Text:
         return "action_save_travel_request"
 
+    def _generate_request_number(self) -> str:
+        """Generate a unique request number"""
+        timestamp = datetime.utcnow()
+        return f"TR-{timestamp.strftime('%Y%m')}-{random.randint(1000, 9999)}"
+
     async def run(
         self,
         dispatcher: CollectingDispatcher,
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
-        # Check if both flight and hotel searches are completed
-        flight_search_done = tracker.get_slot("flight_search_completed")
-        hotel_search_done = tracker.get_slot("hotel_search_completed")
-        
-        if not (flight_search_done and hotel_search_done):
-            missing_searches = []
-            if not flight_search_done:
-                missing_searches.append("flight")
-            if not hotel_search_done:
-                missing_searches.append("hotel")
-            
-            dispatcher.utter_message(
-                text=f"Please complete your {' and '.join(missing_searches)} search first."
-            )
-            return []
-
         try:
-            # Get MongoDB client
-            db_client = MongoDBClient()
-            travel_requests = db_client.database["travel_requests"]
-            
-            # Get user authentication details
-            auth_token = tracker.get_slot("auth_token")
-            user_email = tracker.get_slot("user_email")
-            
-            if not auth_token or not user_email:
-                dispatcher.utter_message(text="Please log in first to save your travel request.")
+            # Get the preview data
+            travel_request_preview = tracker.get_slot("travel_request_preview")
+            if not travel_request_preview:
+                dispatcher.utter_message(
+                    text="No travel request preview found. Please start over."
+                )
                 return []
 
-            # Get flight details
-            flight_details = {
-                "trip_type": tracker.get_slot("trip_type"),
-                "origin": tracker.get_slot("origin"),
-                "destination": tracker.get_slot("destination"),
-                "departure_date": tracker.get_slot("departure_date"),
-                "return_date": tracker.get_slot("return_date"),
-                "cabin_class": tracker.get_slot("cabin_class")
-            }
-
-            # Get hotel details
-            hotel_details = {
-                "city": tracker.get_slot("city"),
-                "check_in": tracker.get_slot("check_in"),
-                "check_out": tracker.get_slot("check_out"),
-                "hotel_rating": tracker.get_slot("hotel_rating")
-            }
-
-            # Create travel request document
+            # Create the final travel request document
             travel_request = {
-                "user_email": user_email,
-                "auth_token": auth_token,
-                "flight_details": flight_details,
-                "hotel_details": hotel_details,
+                "request_number": self._generate_request_number(),
+                "user_id": None,  # Will be set after user lookup
                 "status": "pending",
-                "created_at": datetime.utcnow(),
-                "last_updated": datetime.utcnow()
+                "type": travel_request_preview["type"],
+                "purpose": travel_request_preview["purpose"],
+                "total_cost": travel_request_preview["total_cost"],
+                "flight_details": travel_request_preview["flight_details"],
+                "hotel_details": travel_request_preview["hotel_details"],
+                "approval": {
+                    "status": "pending",
+                },
+                "timestamps": {
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                },
+                "documents": [],
+                "notes": []
             }
 
-            # Insert into MongoDB
-            result = travel_requests.insert_one(travel_request)
-            
+            # Save to MongoDB
+            db_client = MongoDBClient()
+            result = db_client.database["travel_requests"].insert_one(travel_request)
+
             if result.inserted_id:
-                # Format the confirmation message with details
                 confirmation_message = (
                     f"✅ Travel Request Saved Successfully!\n\n"
-                    f"📋 Request ID: {result.inserted_id}\n\n"
-                    f"Flight Details:\n"
-                    f"✈️ From: {flight_details['origin']} To: {flight_details['destination']}\n"
-                    f"📅 Departure: {flight_details['departure_date']}\n"
-                    f"🔄 Return: {flight_details['return_date'] if flight_details['return_date'] else 'N/A'}\n"
-                    f"💺 Cabin: {flight_details['cabin_class']}\n\n"
-                    f"Hotel Details:\n"
-                    f"🏨 City: {hotel_details['city']}\n"
-                    f"📅 Check-in: {hotel_details['check_in']}\n"
-                    f"📅 Check-out: {hotel_details['check_out']}\n"
-                    f"⭐ Rating: {hotel_details['hotel_rating']}"
+                    f"📋 Request Number: {travel_request['request_number']}\n"
+                    f"🔍 Status: Pending Approval\n\n"
+                    f"Your request has been submitted and is pending approval.\n"
+                    f"You will be notified once it's reviewed."
                 )
-                
+
                 dispatcher.utter_message(text=confirmation_message)
-                
-                # Reset the completion flags and return the request ID
+
+                # Clear the preview and reset completion flags
                 return [
                     SlotSet("travel_request_id", str(result.inserted_id)),
+                    SlotSet("travel_request_preview", None),
                     SlotSet("flight_search_completed", False),
                     SlotSet("hotel_search_completed", False)
                 ]
-            else:
-                dispatcher.utter_message(
-                    text="There was an issue saving your travel request. Please try again."
-                )
-                return []
 
         except Exception as e:
             dispatcher.utter_message(
-                text=f"An error occurred while saving your travel request: {str(e)}"
+                text=f"Error saving travel request: {str(e)}"
             )
             return []
 
@@ -1078,23 +1045,23 @@ class ActionSelectHotel(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
-        # Get the selected hotel index (1-based)
-        message = tracker.latest_message.get('text', '')
-        hotel_options = tracker.get_slot("hotel_options")
-        
-        if not hotel_options:
-            dispatcher.utter_message(text="Sorry, no hotels are available to select from.")
-            return []
-            
         try:
-            # Extract hotel details and set as selected_hotel
-            selected_hotel = hotel_options[0]  # For "hotel 1" or "1"
-            dispatcher.utter_message(text=f"🏨 You've selected this hotel:\n\n{selected_hotel}")
+
+            hotel_options = tracker.get_slot("hotel_options")
+            selection_text = tracker.latest_message.get('text', '')
             
-            # Return both the slot update and follow_up_action
+            try:
+                index = int(selection_text.lower().replace('select hotel ', '')) - 1
+                selected_hotel = hotel_options[index]
+            except (ValueError, IndexError):
+                dispatcher.utter_message(text="Invalid hotel selection. Please try again.")
+                return []
+
+            dispatcher.utter_message(text=f"🏨 You've selected this hotel:\n\n{selected_hotel}")
+
             return [
                 SlotSet("selected_hotel", selected_hotel),
-                FollowupAction("action_mark_hotel_search_complete")
+                SlotSet("hotel_search_completed", True)
             ]
             
         except Exception as e:
@@ -1114,7 +1081,136 @@ class ActionSelectHotel(Action):
 #         dispatcher.utter_message(
 #             text=f"Perfect! This is your hotel selection:\n\n"
 #                  f"Hotel Details:\n{selected_hotel}\n\n"
-#                  f"Your choice has been saved 🎉"
+#                  f"Your choice has been saved "
 #         )
         
 #         return []
+
+class ActionGenerateTravelRequest(Action):
+    def name(self) -> Text:
+        return "action_generate_travel_request"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        try:
+            # Get selected flight and hotel
+            selected_flight = tracker.get_slot("selected_flight")
+            selected_hotel = tracker.get_slot("selected_hotel")
+            user_email = tracker.get_slot("user_email")
+            
+            if not selected_flight or not selected_hotel:
+                dispatcher.utter_message(
+                    text="Please complete both flight and hotel selection first."
+                )
+                return []
+
+            # Parse flight details
+            flight_lines = selected_flight.split('\n')
+            route_info = flight_lines[7].replace('📍 From: ', '').split(' to ')
+            
+            flight_details = {
+                "trip_type": "single",  # or get from slot
+                "origin": {
+                    "airport_code": route_info[0],
+                    "city": tracker.get_slot("origin"),
+                    "country": ""  # Could be fetched from a lookup service
+                },
+                "destination": {
+                    "airport_code": route_info[1],
+                    "city": tracker.get_slot("destination"),
+                    "country": ""
+                },
+                "outbound_flight": {
+                    "airline": flight_lines[0].replace('🛩️ Airline: ', ''),
+                    "flight_number": flight_lines[2].replace('🛫 Flight: ', ''),
+                    "cabin_class": flight_lines[1].replace('💺 Cabin Class: ', ''),
+                    "departure_datetime": flight_lines[5].replace('🛫 Departure: ', ''),
+                    "arrival_datetime": flight_lines[6].replace('🛬 Arrival: ', ''),
+                    "duration": flight_lines[4].replace('⏱️ Duration: ', ''),
+                    "price": float(flight_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                    "layovers": []  # Could be parsed from flight details if available
+                }
+            }
+
+            # Parse hotel details
+            hotel_lines = selected_hotel.split('\n')
+            check_in = hotel_lines[1].replace('📅 Check-in: ', '')
+            check_out = hotel_lines[2].replace('📅 Check-out: ', '')
+            price = float(hotel_lines[4].replace('💰 Price: RM ', '').replace(',', ''))
+            
+            # Calculate nights
+            check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+            check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+            nights = (check_out_date - check_in_date).days
+            
+            hotel_details = {
+                "city": tracker.get_slot("city"),
+                "country": "",  # Could be fetched from a lookup service
+                "hotel_name": hotel_lines[0].replace('🏨 Hotel: ', ''),
+                "room_type": hotel_lines[3].replace('🏢 Room Category: ', ''),
+                "check_in": check_in,
+                "check_out": check_out,
+                "nights": nights,
+                "price_per_night": price / nights if nights > 0 else price,
+                "total_price": price,
+                "rating": int(''.join(filter(str.isdigit, hotel_lines[5]))),
+                "amenities": []  # Could be parsed from hotel details if available
+            }
+
+            # Create travel request preview
+            travel_request = {
+                "user_email": user_email,
+                "status": "pending",
+                "type": "business",  # Could be made selectable
+                "purpose": "",  # Could be made input field
+                "total_cost": flight_details["outbound_flight"]["price"] + hotel_details["total_price"],
+                "flight_details": flight_details,
+                "hotel_details": hotel_details
+            }
+
+            # Generate preview message
+            preview_message = (
+                f"📋 Travel Request Preview\n\n"
+                f"✈️ Flight Details:\n"
+                f"• Trip Type: {flight_details['trip_type'].title()}\n"
+                f"• Route: {flight_details['origin']['airport_code']} → {flight_details['destination']['airport_code']}\n"
+                f"• Airline: {flight_details['outbound_flight']['airline']}\n"
+                f"• Flight: {flight_details['outbound_flight']['flight_number']}\n"
+                f"• Class: {flight_details['outbound_flight']['cabin_class']}\n"
+                f"• Departure: {flight_details['outbound_flight']['departure_datetime']}\n"
+                f"• Arrival: {flight_details['outbound_flight']['arrival_datetime']}\n"
+                f"• Duration: {flight_details['outbound_flight']['duration']}\n"
+                f"• Cost: RM {flight_details['outbound_flight']['price']:.2f}\n\n"
+                f"🏨 Hotel Details:\n"
+                f"• Hotel: {hotel_details['hotel_name']}\n"
+                f"• Room: {hotel_details['room_type']}\n"
+                f"• Check-in: {hotel_details['check_in']}\n"
+                f"• Check-out: {hotel_details['check_out']}\n"
+                f"• Nights: {hotel_details['nights']}\n"
+                f"• Price per Night: RM {hotel_details['price_per_night']:.2f}\n"
+                f"• Total Hotel Cost: RM {hotel_details['total_price']:.2f}\n"
+                f"• Rating: {hotel_details['rating']}⭐\n\n"
+                f"💰 Total Trip Cost: RM {travel_request['total_cost']:.2f}\n\n"
+                f"Would you like to confirm and save this travel request?"
+            )
+
+            # Show preview with confirmation buttons
+            dispatcher.utter_message(
+                text=preview_message,
+                buttons=[
+                    {"title": "✅ Yes, save it", "payload": "/confirm_save_request"},
+                    {"title": "❌ No, cancel", "payload": "/deny"}
+                ]
+            )
+
+            return [SlotSet("travel_request_preview", travel_request)]
+
+        except Exception as e:
+            dispatcher.utter_message(
+                text=f"Error generating travel request preview: {str(e)}"
+            )
+            return []
