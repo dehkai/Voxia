@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const { userRoutes } = require('./modules/user/userModule');
 const { chatbotRoutes } = require('./modules/chatbot/ChatbotModule');
+const { emailRoutes } = require('./modules/email/emailModule');
 require('dotenv').config();
 
 const app = express();
@@ -43,6 +44,7 @@ mongoose.connect(`mongodb+srv://dehkai:${process.env.DB_PASSWORD}@voxia.bkbvl.mo
 // User routes - this matches the frontend fetch URL
 app.use('/api/auth', userRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/email', emailRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

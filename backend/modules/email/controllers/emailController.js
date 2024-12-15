@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const User = require('../../user/models/User');
 const {sendEmail, sendEmailWithPdfService} = require('../services/emailService');  // Utility to send email
 
 const sendEmailWithPdf = async (req, res) => {
