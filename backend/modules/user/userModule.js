@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('./controllers/userController');
+const emailController = require('./controllers/emailController');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const { forgotPassword, resetPassword } = require('../user/controllers/authController');
 const User = require('../user/models/User');
@@ -8,6 +9,7 @@ const User = require('../user/models/User');
 router.post('/login', userController.login); 
 router.post('/register', userController.register);
 router.post('/fetch-token', userController.getToken);
+router.post('/sendEmailWithPdf', emailController.sendEmailWithPdf);
 router.get('/profile', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId);
