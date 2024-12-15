@@ -1,4 +1,4 @@
-export const fetchChatbotResponse = async (message) => {
+export const fetchChatbotResponse = async (message,email) => {
     try {
         const cleanMessage = message.startsWith('/') ? message.slice(1) : message;
         
@@ -8,7 +8,7 @@ export const fetchChatbotResponse = async (message) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ 
-                sender: "user", 
+                sender: email, 
                 message: cleanMessage 
             }),
         });
