@@ -7,7 +7,6 @@ import AppNavbar from '../components/admin_dashboard/AppNavbar';
 import Header from '../components/admin_dashboard/Header';
 import MainGrid from '../components/admin_dashboard/MainGrid';
 import SideMenu from '../components/admin_dashboard/SideMenu';
-import OptionsMenu from '../components/admin_dashboard/OptionsMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/auth';
@@ -62,9 +61,9 @@ const Dashboard = React.memo(() => {
           >
             <Header />
             <MainGrid />
+            
           </Stack>
         </Box>
-        <OptionsMenu />
       </Box>
     </AppTheme>
   );
