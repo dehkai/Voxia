@@ -21,6 +21,7 @@ rules:
   - rule: Activate flight search form
     steps:
       - intent: search_flights
+      - action: action_reset_flight_form
       - action: flight_search_form
       - active_loop: flight_search_form
 
@@ -103,17 +104,11 @@ rules:
       - action: action_listen
 
   - rule: Activate hotel search form
-    condition:
-      - slot_was_set:
-          - flight_search_completed: true
-      - slot_was_set:
-          - hotel_search_completed: false
     steps:
       - intent: search_hotels
       - action: action_reset_hotel_form
       - action: hotel_search_form
       - active_loop: hotel_search_form
-      - action: action_listen
 
   - rule: Submit hotel search form
     condition:

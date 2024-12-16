@@ -63,6 +63,10 @@ class ActionResetHotelForm(Action):
             # Set hotel_search_completed to False
             reset_events.append(SlotSet("hotel_search_completed", False))
 
+            # Clear flight date slots to prevent interference
+            reset_events.append(SlotSet("departure_date", None))
+            reset_events.append(SlotSet("return_date", None))
+
             logger.info("Successfully reset hotel form slots")
             return reset_events
 
@@ -70,6 +74,24 @@ class ActionResetHotelForm(Action):
             logger.error(f"Error resetting hotel form slots: {str(e)}")
             # In case of error, reset all slots as a fallback
             return [AllSlotsReset()]
+
+class ActionResetFlightForm(Action):
+    def name(self) -> Text:
+        return "action_reset_flight_form"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return [
+            SlotSet("origin", None),
+            SlotSet("destination", None),
+            SlotSet("departure_date", None),
+            SlotSet("return_date", None),
+            SlotSet("trip_type", None),
+            # Clear hotel date slots to prevent interference
+            SlotSet("check_in", None),
+            SlotSet("check_out", None)
+        ]
 
 class ActionSaveTravelRequest(Action):
     def name(self) -> Text:
