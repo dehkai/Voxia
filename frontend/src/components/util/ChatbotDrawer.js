@@ -18,6 +18,55 @@ import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
 import CloseTwoToneIcon from "@mui/icons-material/CloseTwoTone";
 import AppTheme from "../../shared-theme/AppTheme";
 
+const LoadingBubble = () => (
+  <ListItem sx={{ justifyContent: "flex-start", alignItems: "flex-start", mb: 1 }}>
+    <Avatar sx={{ mr: 1, width: 50, height: 50, fontSize: "20px" }} src={botAvatar}>
+      B
+    </Avatar>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        bgcolor: 'grey.300',
+        p: 1.5,
+        borderRadius: 2,
+        width: 'fit-content',
+      }}
+    >
+      <Box
+        component="span"
+        sx={{
+          width: 10,
+          height: 10,
+          bgcolor: 'grey.600',
+          borderRadius: '50%',
+          animation: 'pulse 1s infinite',
+          '&:nth-of-type(2)': {
+            animationDelay: '0.2s',
+          },
+          '&:nth-of-type(3)': {
+            animationDelay: '0.4s',
+          },
+          '@keyframes pulse': {
+            '0%': {
+              opacity: 0.4,
+            },
+            '50%': {
+              opacity: 1,
+            },
+            '100%': {
+              opacity: 0.4,
+            },
+          },
+        }}
+      />
+      <Box component="span" sx={{ width: 10, height: 10, bgcolor: 'grey.600', borderRadius: '50%' }} />
+      <Box component="span" sx={{ width: 10, height: 10, bgcolor: 'grey.600', borderRadius: '50%' }} />
+    </Box>
+  </ListItem>
+);
+
 const ChatbotDrawer = ({ open, onClose }) => {
   const [messages, setMessages] = useState([
     { 
@@ -29,6 +78,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
   ]);
   const [input, setInput] = useState("");
   const [rows, setRows] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef(null);
 
   // const handleSendMessage = () => {
@@ -59,7 +109,9 @@ const ChatbotDrawer = ({ open, onClose }) => {
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInput("");
     setRows(1);
-
+    
+    setIsProcessing(true); // Show loading indicator
+    
     try {
       const botResponses = await fetchChatbotResponse(input);
       botResponses.forEach((response) => {
@@ -73,6 +125,8 @@ const ChatbotDrawer = ({ open, onClose }) => {
       });
     } catch (error) {
       console.error("Error in Rasa interaction:", error);
+    } finally {
+      setIsProcessing(false); // Hide loading indicator
     }
   };
 
@@ -229,6 +283,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                         timestamp: new Date() 
                                     };
                                     setMessages(prev => [...prev, userMessage]);
+                                    setIsProcessing(true); // Show loading indicator
                                     
                                     // Determine if this is an action trigger or basic intent
                                     const isActionTrigger = [
@@ -265,6 +320,9 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                     })
                                     .catch(error => {
                                         console.error("Error in Rasa interaction:", error);
+                                    })
+                                    .finally(() => {
+                                        setIsProcessing(false); // Hide loading indicator
                                     });
                                 }}
                                 sx={{
@@ -306,6 +364,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
 
               );
             })}
+          {isProcessing && <LoadingBubble />}
           <div ref={messagesEndRef} />
         </List>
         <Box
