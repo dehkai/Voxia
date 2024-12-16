@@ -230,8 +230,17 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                     };
                                     setMessages(prev => [...prev, userMessage]);
                                     
-                                    // Send the payload instead of the title
-                                    const payload = button.payload;
+                                    // Determine if this is an action trigger or basic intent
+                                    const isActionTrigger = [
+                                        "save_travel_request",
+                                        "confirm_save_request",
+                                        "deny"
+                                    ].some(action => button.payload.includes(action));
+
+                                    const messagePayload = isActionTrigger 
+                                        ? button.payload  // Keep the slash for action triggers
+                                        : button.payload.replace("/", ""); // Remove slash for basic intents
+
                                     fetch("http://localhost:5005/webhooks/rest/webhook", {
                                         method: "POST",
                                         headers: {
@@ -239,7 +248,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                         },
                                         body: JSON.stringify({ 
                                             sender: "user", 
-                                            message: payload.replace("/", "") // Remove the leading slash from the payload
+                                            message: messagePayload
                                         }),
                                     })
                                     .then(response => response.json())

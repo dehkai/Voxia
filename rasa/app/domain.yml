@@ -23,6 +23,7 @@ intents:
   - mood_unhappy
   - check_token_status
   - select_hotel
+  - confirm_save_request
 
 entities:
   - airport_code
@@ -192,6 +193,12 @@ slots:
     mappings:
       - type: custom
 
+  travel_request_preview:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: custom
+
 responses:
 
   utter_confirm_save:
@@ -317,14 +324,14 @@ actions:
   - action_offer_restart
   - action_restart_conversation
   - action_fetch_user_preferences
-  - action_save_travel_request
   - action_mark_flight_search_complete
   - action_mark_hotel_search_complete
   - action_reset_hotel_form
   - action_select_flight
   - validate_flight_search_form
   - action_select_hotel
-  # - action_confirm_hotel_booking
+  - action_generate_travel_request
+  - action_save_travel_request
 
 forms:
   flight_search_form:
