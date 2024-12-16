@@ -11,9 +11,11 @@ import EmployeeDashboard from "./pages/Employee_Dashboard";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import UserProfile from "./pages/User_Profile";
-import TravelRequestsPage from './pages/TravelRequestsPage'; // Import Travel Requests Page
-import EmployeeDetailsPage from './pages/EmployeeDetailsPage'; // Import Employee Details Page
-import TravelReportsPage from './pages/TravelReportsPage'; // Import Travel Reports Page
+import TravelRequestsList from './pages/TravelRequestsList';
+import EmployeeDetails from './pages/EmployeeDetails';
+import TravelReports from './pages/TravelReports';
+import TravelRequests from './pages/TravelRequests';
+import TravelHistory from './pages/TravelHistory';
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
 import AdminLayout from "./layout/AdminLayout"; 
 import EmployeeLayout from "./layout/EmployeeLayout"; 
@@ -96,13 +98,19 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Pages for Travel Request*/}
-          <Route path="/travel-requests" element={<TravelRequestsPage />} />
+          <Route path="/travel-requests-list" element={<TravelRequestsList />} />
 
           {/* Pages for Employees' Details*/}
-          <Route path="/employee-details" element={<EmployeeDetailsPage />} />
+          <Route path="/employee-details" element={<EmployeeDetails />} />
 
           {/* Pages for Travel' Report*/}
-          <Route path="/travel-reports" element={<TravelReportsPage />} />
+          <Route path="/travel-reports" element={<TravelReports />} />
+
+          {/* Pages for My Travel' Request*/}
+          <Route path="/travel-requests" element={<TravelRequests />} />
+
+          {/* Pages for My Travel' History*/}
+          <Route path="/travel-history" element={<TravelHistory />} />
 
           {/* Root layout for all other routes */}
           <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>

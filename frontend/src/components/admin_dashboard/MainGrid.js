@@ -9,7 +9,6 @@ import FlightTakeoff from '@mui/icons-material/FlightTakeoff';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles'; // Import to access theme
 import useMediaQuery from '@mui/material/useMediaQuery'; // Import to handle screen size changes
-import Copyright from './internals/components/Copyright';
 import CustomizedDataGrid from './CustomizedDataGrid';
 import DetailsCard from './DetailsCard';
 import ReportsCard from './ReportsCard';
@@ -105,7 +104,6 @@ export default function MainGrid() {
           </Stack>
         </Grid>
       </Grid>
-      <Copyright sx={{ my: 4 }} />
     </Box>
   );
 }

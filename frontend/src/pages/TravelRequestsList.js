@@ -72,15 +72,7 @@ const Dashboard = React.memo(() => {
               Employees' Travel Request
             </Typography>
             <TravelReportsTable />
-            {/* Add Copyright Notice */}
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              align="center"
-              sx={{ mt: 4 }} // Adds margin-top to push it below the table
-            >
-             Copyright © Sitemark 2024
-            </Typography>
+            
           </Stack>
         </Box>
       </Box>

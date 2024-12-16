@@ -10,7 +10,6 @@ const NavbarBreadcrumbs = () => {
   // Define custom names for breadcrumbs
   const breadcrumbNameMap = {
     'admin_dashboard': 'Dashboard',
-    'employee_dashboard': 'Dashboard',
     'travel-requests': 'Dashboard > Travel Requests',
     'employee-details': 'Dashboard > Employee Details',
     'travel-reports': 'Dashboard > Travel Reports',
