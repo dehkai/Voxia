@@ -17,7 +17,7 @@ import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 const mainListItems = [
   { text: 'Dashboard', icon: <AnalyticsRoundedIcon />, path: '/admin_dashboard' },
   { text: 'Employees', icon: <PeopleRoundedIcon />, path: '/employee-details' },
-  { text: 'Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests' },
+  { text: 'Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests-list' },
   { text: 'Reports', icon: <AssessmentIcon />, path: '/travel-reports'},
 ];
 
