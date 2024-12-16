@@ -249,6 +249,14 @@ class ActionMarkHotelSearchComplete(Action):
                     {"title": "No, thanks", "payload": "/deny"}
                 ]
             )
+        else:
+            dispatcher.utter_message(
+                text="Hotel selection completed! Would you like to proceed with flight search?",
+                buttons=[
+                    {"title": "Yes, search flights", "payload": "/search_flights"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
         
         return events
 
