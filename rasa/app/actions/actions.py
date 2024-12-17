@@ -1335,3 +1335,45 @@ class ActionGenerateTravelRequest(Action):
                 text=f"Error generating travel request preview: {str(e)}"
             )
             return []
+
+class ActionInitializeAuth(Action):
+    def name(self) -> Text:
+        return "action_initialize_auth"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Get metadata from the request
+        metadata = tracker.latest_message.get('metadata', {})
+        auth_token = metadata.get('auth_token')
+        
+        if not auth_token:
+            dispatcher.utter_message(text="No authentication token found.")
+            return []
+            
+        try:
+            # Get the database instance
+            db_client = MongoDBClient()
+            user_collection = db_client.database["users"]
+            
+            # Verify token and get user data
+            user = user_collection.find_one({"token": auth_token})
+            
+            if user:
+                # Set both auth_token and user_email slots
+                return [
+                    SlotSet("auth_token", auth_token),
+                    SlotSet("user_email", user.get("email")),
+                    SlotSet("cabin_class", user.get("preferences", {}).get("cabinClass")),
+                    SlotSet("hotel_rating", user.get("preferences", {}).get("hotelRating"))
+                ]
+            else:
+                dispatcher.utter_message(text="Invalid authentication token.")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error initializing auth: {str(e)}")
+            return []

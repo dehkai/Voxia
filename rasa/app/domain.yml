@@ -24,6 +24,7 @@ intents:
   - check_token_status
   - select_hotel
   - confirm_save_request
+  - initialize_auth
 
 entities:
   - airport_code
@@ -333,6 +334,7 @@ actions:
   - action_select_hotel
   - action_generate_travel_request
   - action_save_travel_request
+  - action_initialize_auth
 
 forms:
   flight_search_form:

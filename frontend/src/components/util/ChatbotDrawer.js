@@ -17,6 +17,7 @@ import botAvatar from "../../assets/images/robot.jpg";
 import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
 import CloseTwoToneIcon from "@mui/icons-material/CloseTwoTone";
 import AppTheme from "../../shared-theme/AppTheme";
+import { isAuthenticated } from "../../utils/auth";
 
 const LoadingBubble = () => (
   <ListItem sx={{ justifyContent: "flex-start", alignItems: "flex-start", mb: 1 }}>
@@ -79,21 +80,9 @@ const ChatbotDrawer = ({ open, onClose }) => {
   const [input, setInput] = useState("");
   const [rows, setRows] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const messagesEndRef = useRef(null);
-
-  // const handleSendMessage = () => {
-  //     if (input.trim() === "") return;
-
-  //     const userMessage = { text: input, isBot: false, timestamp: new Date() };
-  //     setMessages((prevMessages) => [...prevMessages, userMessage]);
-  //     setInput("");
-  //     setRows(1);
-
-  //     setTimeout(() => {
-  //         const botMessage = { text: `You said:\n${input}`, isBot: true, timestamp: new Date() };
-  //         setMessages((prevMessages) => [...prevMessages, botMessage]);
-  //     }, 500);
-  // };
+  const inputRef = useRef(null);
 
   const handleExitChat = () => {
     // Close the drawer or reset the chat state
@@ -133,6 +122,67 @@ const ChatbotDrawer = ({ open, onClose }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    const initializeChat = async () => {
+      const { isLoggedIn, user } = isAuthenticated();
+      if (isLoggedIn) {
+        setIsInitializing(true); // Disable input while initializing
+        try {
+          const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              sender: "user",
+              message: "/initialize_auth",
+              metadata: {
+                auth_token: localStorage.getItem('token') || sessionStorage.getItem('token')
+              }
+            }),
+          });
+          
+          const data = await response.json();
+          if (data.length > 0) {
+            setMessages(prev => [
+              ...prev,
+              ...data.map(msg => ({
+                text: msg.text,
+                isBot: true,
+                timestamp: new Date(),
+                buttons: msg.buttons || []
+              }))
+            ]);
+          }
+        } catch (error) {
+          console.error("Error initializing chat:", error);
+        } finally {
+          setIsInitializing(false); // Enable input after initialization
+        }
+      } else {
+        setIsInitializing(false); // Enable input if not logged in
+      }
+    };
+
+    if (open) {
+      initializeChat();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open && !isInitializing && !isProcessing) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [open, isInitializing, isProcessing]);
+
+  useEffect(() => {
+    if (!isProcessing && !isInitializing) {
+      inputRef.current?.focus();
+    }
+  }, [isProcessing, isInitializing]);
 
   const formatDate = (date) => {
     return new Intl.DateTimeFormat("en-US", {
@@ -375,15 +425,16 @@ const ChatbotDrawer = ({ open, onClose }) => {
           }}
         >
           <TextField
+            inputRef={inputRef}
             variant="outlined"
             size="small"
             fullWidth
-            placeholder="Type a message..."
+            placeholder={isInitializing ? "Initializing chat..." : "Type a message..."}
             value={input}
             onChange={(e) => {
               const value = e.target.value;
               setInput(value);
-              setRows(value.split("\n").length); // Update rows based on newline count
+              setRows(value.split("\n").length);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -391,13 +442,15 @@ const ChatbotDrawer = ({ open, onClose }) => {
                 handleSendMessage();
               }
             }}
+            disabled={isInitializing || isProcessing}
             multiline
-            rows={rows} // Only use rows, remove maxRows
+            rows={rows}
           />
           <Button
             onClick={handleSendMessage}
             sx={{ ml: 1 }}
             variant="contained"
+            disabled={isInitializing || isProcessing}
           >
             Send
           </Button>

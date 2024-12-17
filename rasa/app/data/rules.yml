@@ -193,3 +193,8 @@ rules:
       - action: action_select_hotel
       - action: action_mark_hotel_search_complete
       - action: action_listen
+
+  - rule: Initialize authentication
+    steps:
+      - intent: initialize_auth
+      - action: action_initialize_auth
