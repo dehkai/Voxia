@@ -3,12 +3,11 @@ import { alpha } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
-import Fab from '@mui/material/Fab';
-import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
-import AppNavbar from '../components/employee_dashboard/AppNavbar';
-import Header from '../components/employee_dashboard/Header';
-import MainGrid from '../components/employee_dashboard/MainGrid';
-import SideMenu from '../components/employee_dashboard/SideMenu';
+import AppNavbar from '../components/admin_dashboard/AppNavbar';
+import Header from '../components/admin_dashboard/Header';
+import Typography from '@mui/material/Typography';
+import TravelReportsTable from '../components/admin_dashboard/TravelRequestTable';
+import SideMenu from '../components/admin_dashboard/SideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/auth';
@@ -18,8 +17,6 @@ import {
   datePickersCustomizations,
   treeViewCustomizations,
 } from '../shared-theme/customizations';
-import ChatbotDrawer from '../components/util/ChatbotDrawer';
-
 
 const xThemeComponents = {
   ...chartsCustomizations,
@@ -37,12 +34,6 @@ const Dashboard = React.memo(() => {
       navigate("/signin");
     }
   }, [isLoggedIn, navigate]);
-
-  // Chatbot Drawer state
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const handleToggleDrawer = () => {
-    setDrawerOpen((prev) => !prev);
-  };
 
   return (
     <AppTheme themeComponents={xThemeComponents}>
@@ -70,35 +61,24 @@ const Dashboard = React.memo(() => {
             }}
           >
             <Header />
+            <Typography
+              component="h2"
+              variant="h6"
+              sx={{
+                mb: 2,
+                alignSelf: 'flex-start', // Aligns the text to the left
+              }}
+            >
+              Employees' Travel Request
+            </Typography>
+            <TravelReportsTable />
             
-            {/* Pass handleToggleDrawer to MainGrid */}
-            <MainGrid onChatbotClick={handleToggleDrawer} />
           </Stack>
         </Box>
       </Box>
-
-      {/* Chatbot button */}
-      <Box sx={{ "& > :not(style)": { m: 1 } }}>
-        <Fab
-          color="primary"
-          aria-label="chat"
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            right: 16,
-            zIndex: 1000,
-          }}
-          onClick={handleToggleDrawer}
-        >
-          <ChatBubbleIcon />
-        </Fab>
-      </Box>
-
-      {/* Chatbot Drawer */}
-      <ChatbotDrawer open={drawerOpen} onClose={handleToggleDrawer} />
     </AppTheme>
   );
 });
 
-Dashboard.displayName = 'EmployeeDashboard';
+Dashboard.displayName = 'AdminDashboard';
 export default Dashboard;
