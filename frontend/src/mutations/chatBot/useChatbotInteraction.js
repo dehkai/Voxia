@@ -8,7 +8,7 @@ export const fetchChatbotResponse = async (message,email) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ 
-                sender: email, 
+                sender: email   , 
                 message: cleanMessage 
             }),
         });

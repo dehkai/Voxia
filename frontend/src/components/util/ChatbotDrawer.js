@@ -90,13 +90,12 @@ const ChatbotDrawer = ({ open, onClose }) => {
     // setMessages([]); // Optional: clear the chat history
     // setInput(""); // Optional: clear the input field
   };
+  const userString = sessionStorage.getItem('user'); // '{"email":"example@email.com","name":"John"}'
+  const user1 = JSON.parse(userString);
+  console.log("This is user email", user1.email);
 
   const handleSendMessage = async () => {
     if (input.trim() === "") return;
-
-    const userString = sessionStorage.getItem('user'); // '{"email":"example@email.com","name":"John"}'
-    const user = JSON.parse(userString);
-    console.log("This is user email", user.email);
 
     const userMessage = { text: input, isBot: false, timestamp: new Date() };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
@@ -106,7 +105,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
     setIsProcessing(true); // Show loading indicator
     
     try {
-      const botResponses = await fetchChatbotResponse(input,user.email);
+      const botResponses = await fetchChatbotResponse(input,user1.email);
       botResponses.forEach((response) => {
         const botMessage = {
           text: response.text,
@@ -139,7 +138,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              sender: "user",
+              sender: user1.email,
               message: "/initialize_auth",
               metadata: {
                 auth_token: localStorage.getItem('token') || sessionStorage.getItem('token')
@@ -356,7 +355,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                             "Content-Type": "application/json",
                                         },
                                         body: JSON.stringify({ 
-                                            sender: "user", 
+                                            sender: user1.email, 
                                             message: messagePayload
                                         }),
                                     })
