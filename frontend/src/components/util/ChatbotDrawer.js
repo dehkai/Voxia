@@ -94,6 +94,10 @@ const ChatbotDrawer = ({ open, onClose }) => {
   const handleSendMessage = async () => {
     if (input.trim() === "") return;
 
+    const userString = sessionStorage.getItem('user'); // '{"email":"example@email.com","name":"John"}'
+    const user = JSON.parse(userString);
+    console.log("This is user email", user.email);
+
     const userMessage = { text: input, isBot: false, timestamp: new Date() };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInput("");
@@ -102,7 +106,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
     setIsProcessing(true); // Show loading indicator
     
     try {
-      const botResponses = await fetchChatbotResponse(input);
+      const botResponses = await fetchChatbotResponse(input,user.email);
       botResponses.forEach((response) => {
         const botMessage = {
           text: response.text,
