@@ -63,6 +63,10 @@ class ActionResetHotelForm(Action):
             # Set hotel_search_completed to False
             reset_events.append(SlotSet("hotel_search_completed", False))
 
+            # Clear flight date slots to prevent interference
+            reset_events.append(SlotSet("departure_date", None))
+            reset_events.append(SlotSet("return_date", None))
+
             logger.info("Successfully reset hotel form slots")
             return reset_events
 
@@ -70,6 +74,24 @@ class ActionResetHotelForm(Action):
             logger.error(f"Error resetting hotel form slots: {str(e)}")
             # In case of error, reset all slots as a fallback
             return [AllSlotsReset()]
+
+class ActionResetFlightForm(Action):
+    def name(self) -> Text:
+        return "action_reset_flight_form"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        return [
+            SlotSet("origin", None),
+            SlotSet("destination", None),
+            SlotSet("departure_date", None),
+            SlotSet("return_date", None),
+            SlotSet("trip_type", None),
+            # Clear hotel date slots to prevent interference
+            SlotSet("check_in", None),
+            SlotSet("check_out", None)
+        ]
 
 class ActionSaveTravelRequest(Action):
     def name(self) -> Text:
@@ -224,6 +246,14 @@ class ActionMarkHotelSearchComplete(Action):
                 text="Great! Both flight and hotel selections are complete. Would you like to generate your travel request?",
                 buttons=[
                     {"title": "Yes, please", "payload": "/save_travel_request"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
+        else:
+            dispatcher.utter_message(
+                text="Hotel selection completed! Would you like to proceed with flight search?",
+                buttons=[
+                    {"title": "Yes, search flights", "payload": "/search_flights"},
                     {"title": "No, thanks", "payload": "/deny"}
                 ]
             )
@@ -1304,4 +1334,46 @@ class ActionGenerateTravelRequest(Action):
             dispatcher.utter_message(
                 text=f"Error generating travel request preview: {str(e)}"
             )
+            return []
+
+class ActionInitializeAuth(Action):
+    def name(self) -> Text:
+        return "action_initialize_auth"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Get metadata from the request
+        metadata = tracker.latest_message.get('metadata', {})
+        auth_token = metadata.get('auth_token')
+        
+        if not auth_token:
+            dispatcher.utter_message(text="No authentication token found.")
+            return []
+            
+        try:
+            # Get the database instance
+            db_client = MongoDBClient()
+            user_collection = db_client.database["users"]
+            
+            # Verify token and get user data
+            user = user_collection.find_one({"token": auth_token})
+            
+            if user:
+                # Set both auth_token and user_email slots
+                return [
+                    SlotSet("auth_token", auth_token),
+                    SlotSet("user_email", user.get("email")),
+                    SlotSet("cabin_class", user.get("preferences", {}).get("cabinClass")),
+                    SlotSet("hotel_rating", user.get("preferences", {}).get("hotelRating"))
+                ]
+            else:
+                dispatcher.utter_message(text="Invalid authentication token.")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error initializing auth: {str(e)}")
             return []
