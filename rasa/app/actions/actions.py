@@ -54,7 +54,8 @@ class ActionResetHotelForm(Action):
                 "city",
                 "check_in",
                 "check_out",
-                "hotel_search_completed"
+                "hotel_search_completed",
+                "selected_hotel"
             ]
 
             # Create SlotSet events for each slot
@@ -731,8 +732,8 @@ class ActionSearchHotels(Action):
 
         return valid_offers
 
-    def format_hotel_details(self, hotel: Dict[Text, Any], rating: str) -> str:
-        """Format hotel offer details for display, with safeguards for list structures."""
+    def format_hotel_details(self, hotel: Dict[Text, Any], rating: str, currency_conversion: Dict[Text, Any] = None) -> str:
+        """Format hotel offer details for display, with currency conversion support."""
         try:
             offers = hotel.get('offers', [])
             if not offers or not isinstance(offers, list):
@@ -742,7 +743,20 @@ class ActionSearchHotels(Action):
             hotel_data = hotel.get('hotel', {})
 
             hotel_name = hotel_data.get('name', 'N/A')
-            price_total = offer.get('price', {}).get('total', 'N/A')
+            price_data = offer.get('price', {})
+            original_currency = price_data.get('currency', 'EUR')
+            price_total = price_data.get('total', 'N/A')
+
+            # Convert price if currency conversion data is available
+            if currency_conversion and price_total != 'N/A':
+                conversion_rate = currency_conversion.get(original_currency, {}).get('rate')
+                if conversion_rate:
+                    try:
+                        price_total = float(price_total) * float(conversion_rate)
+                        price_total = f"{price_total:.2f}"
+                    except ValueError:
+                        logger.error(f"Error converting price: {price_total} with rate {conversion_rate}")
+
             description_text = offer.get('room', {}).get('description', {}).get('text', 'N/A')[:100]
             check_in_date = offer.get('checkInDate', 'N/A')
             check_out_date = offer.get('checkOutDate', 'N/A')
@@ -793,11 +807,25 @@ class ActionSearchHotels(Action):
 
             if hotel_offers:
                 hotel_details = []
+                # Get currency conversion rates from the hotel_offers response
+                currency_conversion = amadeus.get(
+                    '/v3/shopping/hotel-offers',
+                    hotelIds=hotel_ids[0],  # Use first hotel to get conversion rates
+                    adults='1',
+                    checkInDate=check_in,
+                    checkOutDate=check_out,
+                    currency="MYR"
+                ).result.get('dictionaries', {}).get('currencyConversionLookupRates', {})
+                
                 for idx, hotel_offer in enumerate(hotel_offers[:3], 1):
                     hotel_id = hotel_offer['hotel']['hotelId']
                     hotel_info = hotel_info_map.get(hotel_id, {})
                     rating = hotel_ratings_map.get(hotel_id, 'N/A')
-                    formatted_details = self.format_hotel_details(hotel_offer, rating)
+                    formatted_details = self.format_hotel_details(
+                        hotel_offer, 
+                        rating,
+                        currency_conversion
+                    )
                     hotel_details.append(formatted_details)
 
                 # First display the instruction message
