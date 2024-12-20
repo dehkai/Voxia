@@ -50,13 +50,20 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
+    const { email, password } = req.body;
+
     try {
-        console.log('Login request received:', req.body); // Log incoming request
+        console.log('Login request received:', req.body);
+        // Add timeout to database queries
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Database timeout')), 5000);
+        });
+
+        const userPromise = User.findOne({ email });
         
-        const { email, password } = req.body;
-        
-        // Find user by email
-        const user = await User.findOne({ email });
+        // Race between timeout and actual query
+        const user = await Promise.race([userPromise, timeoutPromise]);
+
         if (!user) {
             console.log('User not found:', email);
             return res.status(401).json({ message: 'Invalid credentials' });
@@ -97,10 +104,14 @@ const login = async (req, res) => {
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ 
-            message: 'Server error during login',
-            error: error.message 
-        });
+        
+        if (error.message === 'Database timeout') {
+            return res.status(503).json({
+                message: 'Service temporarily unavailable. Please try again.'
+            });
+        }
+
+        res.status(500).json({ message: 'Server error during login' });
     }
 };
 

@@ -54,7 +54,8 @@ class ActionResetHotelForm(Action):
                 "city",
                 "check_in",
                 "check_out",
-                "hotel_search_completed"
+                "hotel_search_completed",
+                "selected_hotel"
             ]
 
             # Create SlotSet events for each slot
@@ -576,10 +577,19 @@ class ActionSearchFlights(Action):
             
             if outbound_details:
                 if trip_type == "single":
-                    dispatcher.utter_message(text="Here are your flight options. Please select one by saying 'select flight 1', 'select flight 2', or 'select flight 3':")
+                    dispatcher.utter_message(text="Here are your flight options:")
                     
+                    # Create buttons for each flight option
+                    buttons = []
                     for idx, flight in enumerate(outbound_details, 1):
                         dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                        buttons.append({
+                            "title": f"Select Flight {idx}",
+                            "payload": f"/select_flight{{\"flight_number\": \"{idx-1}\"}}"
+                        })
+                    
+                    # Display selection buttons in a separate message
+                    dispatcher.utter_message(text="Please select your flight:", buttons=buttons)
                     
                     return [
                         SlotSet("flights_found", True),
@@ -592,16 +602,15 @@ class ActionSearchFlights(Action):
                     if return_details:
                         # Show outbound options
                         dispatcher.utter_message(text=f"✈️ Outbound Options ({departure_date}):")
+                        buttons = []
                         for idx, flight in enumerate(outbound_details, 1):
                             dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                            buttons.append({
+                                "title": f"Select Outbound Flight {idx}",
+                                "payload": f"/select_flight{{\"flight_number\": \"{idx-1}\"}}"
+                            })
                         
-                        # Show return options
-                        dispatcher.utter_message(text=f"🔄 Return Options ({return_date}):")
-                        for idx, flight in enumerate(return_details, 1):
-                            dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
-                        
-                        total_combinations = len(outbound_details) * len(return_details)
-                        dispatcher.utter_message(text=f"📊 Total {total_combinations} combinations available. Please select your outbound flight first by saying 'select flight 1', 'select flight 2', or 'select flight 3'")
+                        dispatcher.utter_message(text="Please select your outbound flight:", buttons=buttons)
                         
                         return [
                             SlotSet("flights_found", True),
@@ -723,8 +732,8 @@ class ActionSearchHotels(Action):
 
         return valid_offers
 
-    def format_hotel_details(self, hotel: Dict[Text, Any], rating: str) -> str:
-        """Format hotel offer details for display, with safeguards for list structures."""
+    def format_hotel_details(self, hotel: Dict[Text, Any], rating: str, currency_conversion: Dict[Text, Any] = None) -> str:
+        """Format hotel offer details for display, with currency conversion support."""
         try:
             offers = hotel.get('offers', [])
             if not offers or not isinstance(offers, list):
@@ -734,7 +743,20 @@ class ActionSearchHotels(Action):
             hotel_data = hotel.get('hotel', {})
 
             hotel_name = hotel_data.get('name', 'N/A')
-            price_total = offer.get('price', {}).get('total', 'N/A')
+            price_data = offer.get('price', {})
+            original_currency = price_data.get('currency', 'EUR')
+            price_total = price_data.get('total', 'N/A')
+
+            # Convert price if currency conversion data is available
+            if currency_conversion and price_total != 'N/A':
+                conversion_rate = currency_conversion.get(original_currency, {}).get('rate')
+                if conversion_rate:
+                    try:
+                        price_total = float(price_total) * float(conversion_rate)
+                        price_total = f"{price_total:.2f}"
+                    except ValueError:
+                        logger.error(f"Error converting price: {price_total} with rate {conversion_rate}")
+
             description_text = offer.get('room', {}).get('description', {}).get('text', 'N/A')[:100]
             check_in_date = offer.get('checkInDate', 'N/A')
             check_out_date = offer.get('checkOutDate', 'N/A')
@@ -785,24 +807,44 @@ class ActionSearchHotels(Action):
 
             if hotel_offers:
                 hotel_details = []
+                # Get currency conversion rates from the hotel_offers response
+                currency_conversion = amadeus.get(
+                    '/v3/shopping/hotel-offers',
+                    hotelIds=hotel_ids[0],  # Use first hotel to get conversion rates
+                    adults='1',
+                    checkInDate=check_in,
+                    checkOutDate=check_out,
+                    currency="MYR"
+                ).result.get('dictionaries', {}).get('currencyConversionLookupRates', {})
+                
                 for idx, hotel_offer in enumerate(hotel_offers[:3], 1):
                     hotel_id = hotel_offer['hotel']['hotelId']
                     hotel_info = hotel_info_map.get(hotel_id, {})
                     rating = hotel_ratings_map.get(hotel_id, 'N/A')
-                    formatted_details = self.format_hotel_details(hotel_offer, rating)
+                    formatted_details = self.format_hotel_details(
+                        hotel_offer, 
+                        rating,
+                        currency_conversion
+                    )
                     hotel_details.append(formatted_details)
 
                 # First display the instruction message
                 dispatcher.utter_message(
-                    text=f"🏨 Found {len(hotel_offers)} available hotels in {city_code}.\n"
-                         "Please select one by saying 'select hotel 1', 'select hotel 2', or 'select hotel 3':"
+                    text=f"🏨 Found {len(hotel_offers)} available hotels in {city_code}."
                 )
 
-                # Then display numbered options
+                # Display each hotel option
+                buttons = []
                 for idx, hotel in enumerate(hotel_details, 1):
                     dispatcher.utter_message(text=f"Option {idx}:\n{hotel}")
+                    buttons.append({
+                        "title": f"Select Hotel {idx}",
+                        "payload": f"/select_hotel{{\"hotel_number\": \"{idx-1}\"}}"
+                    })
+                
+                # Display selection buttons in a separate message
+                dispatcher.utter_message(text="Please select your hotel:", buttons=buttons)
 
-                # Store hotel options in a slot
                 return [
                     SlotSet("hotel_options", hotel_details),
                     SlotSet("hotel_search_completed", True)
@@ -1014,13 +1056,26 @@ class ActionSelectFlight(Action):
         flight_number = None
         trip_type = tracker.get_slot("trip_type")
         
-        # Extract the flight number from the message
-        if '1' in message or 'first' in message:
-            flight_number = 0
-        elif '2' in message or 'second' in message:
-            flight_number = 1
-        elif '3' in message or 'third' in message:
-            flight_number = 2
+        # Extract the flight number from the message or payload
+        if message.startswith('/select_flight'):
+            # Handle button payload
+            import json
+            try:
+                json_str = message.replace('/select_flight', '')
+                payload_data = json.loads(json_str)
+                flight_number = int(payload_data.get('flight_number', 0))
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.error(f"Error parsing flight selection payload: {str(e)}")
+                dispatcher.utter_message(text="Invalid flight selection format.")
+                return []
+        else:
+            # Handle text input
+            if '1' in message or 'first' in message:
+                flight_number = 0
+            elif '2' in message or 'second' in message:
+                flight_number = 1
+            elif '3' in message or 'third' in message:
+                flight_number = 2
 
         try:
             if trip_type == "single":
@@ -1049,12 +1104,24 @@ class ActionSelectFlight(Action):
                         return []
                         
                     selected_flight = outbound_options[flight_number]
+                    
+                    # Create buttons for return flight selection
+                    buttons = []
+                    dispatcher.utter_message(text="✈️ Here are your return flight options:")
+                    for idx, flight in enumerate(return_options, 1):
+                        dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                        buttons.append({
+                            "title": f"Select Return Flight {idx}",
+                            "payload": f"/select_flight{{\"flight_number\": \"{idx-1}\"}}"
+                        })
+                    
                     confirmation_message = (
                         f"✈️ You've selected this outbound flight:\n\n"
                         f"{selected_flight}\n\n"
-                        f"Now, please select your return flight by saying 'select flight 1', 'select flight 2', or 'select flight 3'"
+                        f"Now, please select your return flight:"
                     )
-                    dispatcher.utter_message(text=confirmation_message)
+                    dispatcher.utter_message(text=confirmation_message, buttons=buttons)
+                    
                     # Switch flight_options to return options for next selection
                     return [
                         SlotSet("selected_outbound", selected_flight),
@@ -1094,26 +1161,55 @@ class ActionSelectHotel(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         try:
-
-            hotel_options = tracker.get_slot("hotel_options")
-            selection_text = tracker.latest_message.get('text', '')
+            # First try to get hotel_number from entities
+            entities = tracker.latest_message.get('entities', [])
+            hotel_number = next(
+                (e['value'] for e in entities if e['entity'] == 'hotel_number'),
+                None
+            )
             
-            try:
-                index = int(selection_text.lower().replace('select hotel ', '')) - 1
-                selected_hotel = hotel_options[index]
-            except (ValueError, IndexError):
-                dispatcher.utter_message(text="Invalid hotel selection. Please try again.")
+            if hotel_number is not None:
+                index = int(hotel_number)
+            else:
+                # Fallback to text parsing
+                selection_text = tracker.latest_message.get('text', '')
+                # Handle both button payload and text input
+                if selection_text.startswith('/select_hotel'):
+                    # Extract number from payload like '/select_hotel{"hotel_number": "0"}'
+                    import json
+                    try:
+                        # Extract the JSON part from the payload
+                        json_str = selection_text.replace('/select_hotel', '')
+                        payload_data = json.loads(json_str)
+                        index = int(payload_data.get('hotel_number', 0))
+                    except json.JSONDecodeError:
+                        dispatcher.utter_message(text="Invalid hotel selection format.")
+                        return []
+                else:
+                    # Handle text input like "select hotel 1"
+                    index = int(selection_text.lower().replace('select hotel ', '').strip()) - 1
+            
+            hotel_options = tracker.get_slot("hotel_options")
+            if not hotel_options:
+                dispatcher.utter_message(text="No hotel options available. Please search for hotels first.")
                 return []
-
+                
+            if index < 0 or index >= len(hotel_options):
+                dispatcher.utter_message(text="Invalid hotel selection. Please choose from the available options.")
+                return []
+                
+            selected_hotel = hotel_options[index]
+            
             dispatcher.utter_message(text=f"🏨 You've selected this hotel:\n\n{selected_hotel}")
-
+            
             return [
                 SlotSet("selected_hotel", selected_hotel),
                 SlotSet("hotel_search_completed", True)
             ]
             
         except Exception as e:
-            dispatcher.utter_message(text=f"Error selecting hotel: {str(e)}")
+            logger.error(f"Error selecting hotel: {str(e)}")
+            dispatcher.utter_message(text="Error processing hotel selection. Please try again.")
             return []
 
 # class ActionConfirmHotelBooking(Action):

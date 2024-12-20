@@ -342,6 +342,8 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                     const isActionTrigger = [
                                         "save_travel_request",
                                         "confirm_save_request",
+                                        "select_flight",
+                                        "select_hotel",
                                         "deny"
                                     ].some(action => button.payload.includes(action));
 

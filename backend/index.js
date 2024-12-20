@@ -48,3 +48,21 @@ app.use('/api/email', emailRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Increase timeout
+app.timeout = 30000; // 30 seconds
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  if (err.code === 'ECONNRESET') {
+    return res.status(503).json({
+      message: 'Service temporarily unavailable. Please try again.'
+    });
+  }
+
+  res.status(500).json({
+    message: 'Internal server error'
+  });
+});
