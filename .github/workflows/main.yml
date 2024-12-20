@@ -3,7 +3,7 @@ name: Build and Push Docker Images
 on:
   push:
     branches:
-      - main
+      - main 
   pull_request:
     branches:
       - main
@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v1
 
       - name: Install Docker Compose
         run: |
@@ -31,32 +31,17 @@ jobs:
           echo "MONGODB_ATLAS_URI=${{ secrets.MONGODB_ATLAS_URI }}" >> ./.env
           echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" >> ./.env
 
-      - name: Build Backend Docker image
+      - name: Build Docker images
         run: |
-          docker buildx build --platform linux/amd64 -t dehkai/voxia-backend:v1.0 ./backend
+          docker build -t dehkai/voxia-backend:v1.0 ./backend
+          docker build -t dehkai/voxia-frontend:v1.0 ./frontend
+          docker build -t dehkai/voxia-rasa:v1.0 ./rasa/app
+          
 
-      - name: Build Frontend Docker image
-        run: |
-          docker buildx build --platform linux/amd64 -t dehkai/voxia-frontend:v1.0 ./frontend
-
-      - name: Build Rasa Docker image
-        run: |
-          docker buildx build --platform linux/amd64 -t dehkai/rasa_custom:v1.0 ./rasa/app
-
-      - name: Push Backend Docker image
+      - name: Push Docker images
         if: github.ref == 'refs/heads/main'
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
           docker push dehkai/voxia-backend:v1.0
-
-      - name: Push Frontend Docker image
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
           docker push dehkai/voxia-frontend:v1.0
-
-      - name: Push Rasa Docker image
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker push dehkai/rasa_custom:v1.0
+          docker push dehkai/voxia-rasa:v1.0
