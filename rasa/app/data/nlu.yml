@@ -375,6 +375,9 @@ nlu:
       - flight 3
       - option 3
       - last flight
+      - /select_flight{"flight_number": "0"}
+      - /select_flight{"flight_number": "1"}
+      - /select_flight{"flight_number": "2"}
 
   - intent: select_hotel
     examples: |
@@ -385,7 +388,9 @@ nlu:
       - first hotel
       - hotel number 1
       - 1
-
+      - /select_hotel{"hotel_number": "0"}
+      - /select_hotel{"hotel_number": "1"}
+      - /select_hotel{"hotel_number": "2"}
 
   - intent: save_travel_request
     examples: |
