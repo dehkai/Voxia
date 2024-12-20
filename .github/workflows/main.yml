@@ -36,6 +36,7 @@ jobs:
           docker build -t dehkai/voxia-backend:v1.0 ./backend
           docker build -t dehkai/voxia-frontend:v1.0 ./frontend
           docker build -t dehkai/voxia-rasa:v1.0 ./rasa/app
+          docker build -t dehkai/voxia-action-server:v1.0 -f ./rasa/app/Dockerfile.action ./rasa/app
           
 
       - name: Push Docker images
@@ -45,3 +46,5 @@ jobs:
           docker push dehkai/voxia-backend:v1.0
           docker push dehkai/voxia-frontend:v1.0
           docker push dehkai/voxia-rasa:v1.0
+          docker push dehkai/voxia-action-server:v1.0
+
