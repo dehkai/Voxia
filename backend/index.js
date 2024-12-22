@@ -35,8 +35,6 @@ app.use(express.json());
 
 mongoose.connect(`mongodb+srv://dehkai:${process.env.DB_PASSWORD}@voxia.bkbvl.mongodb.net/voxia?retryWrites=true&w=majority&appName=Voxia`, {
   dbName: 'Voxia',
-  useNewUrlParser: true,
-  useUnifiedTopology: true
 })
 .then(() => console.log('Connected to MongoDB - Database: Voxia'))
 .catch(err => console.error('MongoDB connection error:', err));
