@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const { userRoutes } = require('./modules/user/userModule');
-const { chatbotRoutes } = require('./modules/chatbot/ChatbotModule');
+const { chatbotRoutes } = require('./modules/chatbot/chatbotModule');
 const { emailRoutes } = require('./modules/email/emailModule');
 require('dotenv').config();
 
