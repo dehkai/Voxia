@@ -76,6 +76,7 @@ export default function SignIn(props) {
   const [isLoading, setIsLoading] = useState(false); // Add loading state
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
+  
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -87,7 +88,7 @@ export default function SignIn(props) {
 
   const attemptLogin = async (email, password, retryCount = 0) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
