@@ -12,7 +12,8 @@ const allowedOrigins = [
   'http://localhost:3000',   // React app local
   'http://localhost:5005',   // Rasa local
   'http://frontend:3000',    // React app in Docker
-  'http://rasa:5005'        // Rasa in Docker
+  'http://rasa:5005',        // Rasa in Docker
+  `${process.env.FRONTEND_URL}`,        // Voxia production 
 ];
 
 // Enhanced CORS configuration
