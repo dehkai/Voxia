@@ -4,10 +4,11 @@ const userController = require('./controllers/userController');
 const authMiddleware = require('../../middlewares/authMiddleware');
 const { forgotPassword, resetPassword } = require('../user/controllers/authController');
 const User = require('../user/models/User');
+const { getUserTokenByEmail } = require('../user/services/userService');
 
 router.post('/login', userController.login); 
 router.post('/register', userController.register);
-router.post('/fetch-token', userController.getToken);
+router.post('/fetch-token', getUserTokenByEmail);
 router.get('/profile', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId);
