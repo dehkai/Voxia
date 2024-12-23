@@ -12,7 +12,9 @@ const register = async (req, res) => {
         const { username, email, password, role } = req.body;
         
         // Check if user already exists
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({
+            email: { $eq: email }
+        }).collation({ locale: 'en', strength: 2 });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }

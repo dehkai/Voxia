@@ -9,7 +9,10 @@ const forgotPassword = async (req, res) => {
         const { email } = req.body;
         console.log('Forgot password request received:', req.body);
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({
+            email: { $eq: email }
+        }).collation({ locale: 'en', strength: 2 });
+
         if (!user) {
             console.log('User not found for email:', email);
             return res.status(404).json({ message: 'User with this email does not exist.' });
