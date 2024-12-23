@@ -12,9 +12,9 @@ const register = async (req, res) => {
         const { username, email, password, role } = req.body;
         
         // Check if user already exists
-        const existingUser = await User.findOne({
-            email: { $eq: email }
-        }).collation({ locale: 'en', strength: 2 });
+        const existingUser = await User.findOne()
+            .where('email').equals(email.toString())
+            .collation({ locale: 'en', strength: 2 });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -80,9 +80,10 @@ const login = [
                 setTimeout(() => reject(new Error('Database timeout')), 5000);
             });
 
-            const userPromise = User.findOne({
-                email: { $eq: email }
-            }).select('+password +role +email');
+            const userPromise = User.findOne()
+                .where('email').equals(email.toString())
+                .select('+password +role +email')
+                .collation({ locale: 'en', strength: 2 });
 
             // Race between timeout and actual query
             const user = await Promise.race([userPromise, timeoutPromise]);
@@ -111,11 +112,10 @@ const login = [
             );
 
             // Update user token using findOneAndUpdate with $eq operator
-            await User.findOneAndUpdate(
-                { _id: { $eq: user._id } },
-                { $set: { token: token } },
-                { new: true }
-            );
+            await User.findOneAndUpdate()
+                .where('_id').equals(user._id.toString())
+                .set({ token: token })
+                .setOptions({ new: true });
 
             console.log('Login successful for user:', email);
             
