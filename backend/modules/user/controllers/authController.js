@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const {sendEmail} = require('../../email/services/emailService');  // Utility to send email
 const { body, validationResult } = require('express-validator');
+require('dotenv').config();
 
 const forgotPassword = async (req, res) => {
     try {
@@ -23,7 +24,7 @@ const forgotPassword = async (req, res) => {
         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
         await user.save();
 
-        const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
         
         // Send the reset email
         await sendEmail(email, 'Password Reset', 
