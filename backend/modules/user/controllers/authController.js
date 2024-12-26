@@ -4,6 +4,7 @@ const User = require('../models/User');
 const {sendEmail} = require('../../email/services/emailService');  // Utility to send email
 const { body, validationResult } = require('express-validator');
 require('dotenv').config();
+const getResetPasswordEmailTemplate = require('../../email/templates/resetPasswordEmail');
 
 const forgotPassword = async (req, res) => {
     try {
@@ -25,11 +26,13 @@ const forgotPassword = async (req, res) => {
         await user.save();
 
         const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+        const emailTemplate = getResetPasswordEmailTemplate(resetLink);
         
-        // Send the reset email
-        await sendEmail(email, 'Password Reset', 
-            `You requested a password reset. Click the link below to reset your password:\n\n${resetLink}`, 
-            `<p>You requested a password reset. Click the link below to reset your password:</p><a href="${resetLink}">${resetLink}</a>`
+        await sendEmail(
+            email, 
+            emailTemplate.subject, 
+            emailTemplate.plainText, 
+            emailTemplate.html
         );
 
         res.status(200).json({ message: 'Password reset link has been sent to your email.' });
