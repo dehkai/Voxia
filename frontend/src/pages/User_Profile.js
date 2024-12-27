@@ -11,7 +11,7 @@ function Account() {
     useEffect(() => {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (token) {
-            fetch('http://localhost:5000/api/auth/profile', {
+            fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -45,7 +45,7 @@ function Account() {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     
         try {
-            const response = await fetch('http://localhost:5000/api/auth/update-profile', {
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/update-profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

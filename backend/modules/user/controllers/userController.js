@@ -2,6 +2,7 @@ require('dotenv').config({ path: '.backend.env' });
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
 
 const { getUserTokenByEmail } = require('../services/userService');
 
@@ -11,7 +12,9 @@ const register = async (req, res) => {
         const { username, email, password, role } = req.body;
         
         // Check if user already exists
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne()
+            .where('email').equals(email.toString())
+            .collation({ locale: 'en', strength: 2 });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -49,89 +52,117 @@ const register = async (req, res) => {
     }
 };
 
-const login = async (req, res) => {
-    const { email, password } = req.body;
+const login = [
+    // Validation rules
+    body('email')
+        .isEmail().withMessage('Invalid email format')
+        .trim()
+        .escape(),
+    body('password')
+        .isString().withMessage('Password must be a string')
+        .notEmpty().withMessage('Password cannot be empty'),
 
-    try {
-        console.log('Login request received:', req.body);
-        // Add timeout to database queries
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Database timeout')), 5000);
-        });
-
-        const userPromise = User.findOne({ email });
-        
-        // Race between timeout and actual query
-        const user = await Promise.race([userPromise, timeoutPromise]);
-
-        if (!user) {
-            console.log('User not found:', email);
-            return res.status(401).json({ message: 'Invalid credentials' });
+    // The actual login function
+    async (req, res) => {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        // Verify password
-        const isValidPassword = await bcrypt.compare(password, user.password);
-        if (!isValidPassword) {
-            console.log('Invalid password for user:', email);
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
+        const { email, password } = req.body;
 
-        // Generate token
-        const token = jwt.sign(
-            { 
-                userId: user._id,
-                role: user.role,
-                email: user.email
-            },
-            process.env.JWT_SECRET || 'your-secret-key',
-            { expiresIn: '1h' }
-        );
+        try {
+            console.log('Login request received:', req.body);
 
-        user.token = token; // Update the user's token field
-        await user.save();
-
-        console.log('Login successful for user:', email);
-
-        res.status(200).json({
-            message: 'Login successful',
-            user: {
-                id: user._id,
-                username: user.username,
-                email: user.email,
-                role: user.role
-            },
-            token
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        
-        if (error.message === 'Database timeout') {
-            return res.status(503).json({
-                message: 'Service temporarily unavailable. Please try again.'
+            // Add timeout to database queries
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Database timeout')), 5000);
             });
+
+            const userPromise = User.findOne()
+                .where('email').equals(email.toString())
+                .select('+password +role +email')
+                .collation({ locale: 'en', strength: 2 });
+
+            // Race between timeout and actual query
+            const user = await Promise.race([userPromise, timeoutPromise]);
+
+            if (!user) {
+                console.log('User not found:', email);
+                return res.status(401).json({ message: 'Invalid credentials' });
+            }
+
+            // Verify password
+            const isValidPassword = await bcrypt.compare(password, user.password);
+            if (!isValidPassword) {
+                console.log('Invalid password for user:', email);
+                return res.status(401).json({ message: 'Invalid credentials' });
+            }
+
+            // Generate token
+            const token = jwt.sign(
+                { 
+                    userId: user._id,
+                    role: user.role,
+                    email: user.email
+                },
+                process.env.JWT_SECRET || 'your-secret-key',
+                { expiresIn: '1h' }
+            );
+
+            // Update user token using findOneAndUpdate with $eq operator
+            await User.findOneAndUpdate()
+                .where('_id').equals(user._id.toString())
+                .set({ token: token })
+                .setOptions({ new: true });
+
+            console.log('Login successful for user:', email);
+            
+            return res.status(200).json({
+                token,
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+
+        } catch (error) {
+            console.error('Login error:', error);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    }
+];
+
+const getToken = [
+    body('email')
+        .isEmail().withMessage('Invalid email format')
+        .trim()
+        .escape(),
+
+    async (req, res) => {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        res.status(500).json({ message: 'Server error during login' });
+        try {
+            const { email } = req.body;
+
+            const token = await getUserTokenByEmail(req, res); 
+
+            res.status(200).json({
+                message: 'Token fetched successfully',
+                token
+            });
+        } catch (error) {
+            console.error('Error fetching token:', error);
+            res.status(500).json({ message: `Error fetching token: ${error.message}` });
+        }
     }
-};
-
-const getToken = async (req, res) => {
-    try {
-        const { email } = req.body;
-
-        // Fetch the token from the service
-        const token = await getUserTokenByEmail(email);
-
-        res.status(200).json({
-            message: 'Token fetched successfully',
-            token
-        });
-    } catch (error) {
-        console.error('Error fetching token:', error);
-        res.status(500).json({ message: `Error fetching token: ${error.message}` });
-
-    }
-}
+];
 const updateUserDetails = async (req, res) => {
     try {
         const userId = req.user.userId;  
