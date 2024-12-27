@@ -25,7 +25,7 @@ router.delete('/chatbots/:id', deleteChatbotHandler);      // Delete a chatbot b
 
 // PDF generation route
 router.post('/chatbots/generate-pdf', authMiddleware, createPDFHandler);
-router.get('/chatbots/generate-pdf/download',authMiddleware, downloadPDFHandler);
+router.get('/chatbots/generate-pdf/download/:fileId', downloadPDFHandler);
 router.post('/chatbots/generate-custom', createCustomPDFHandler);
 
 module.exports = {

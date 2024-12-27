@@ -947,9 +947,14 @@ class ActionGeneratePDF(Action):
             "text": "This is a sample text to include in the PDF."
         }
 
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
         # Make a request to the backend to generate the PDF
         try:
-            response = requests.post(backend_url_pdf, json=data)
+            response = requests.post(backend_url_pdf, json=data, headers=headers)
             response.raise_for_status()
 
             # Construct download link
