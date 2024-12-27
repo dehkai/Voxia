@@ -3,7 +3,7 @@ from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from amadeus import Client, ResponseError
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 from rasa_sdk.forms import FormValidationAction
 from rasa_sdk.types import DomainDict
@@ -100,7 +100,8 @@ class ActionSaveTravelRequest(Action):
 
     def _generate_request_number(self) -> str:
         """Generate a unique request number"""
-        timestamp = datetime.utcnow()
+        tz = timezone(timedelta(hours=8))  # UTC+8
+        timestamp = datetime.now(tz)
         return f"TR-{timestamp.strftime('%Y%m')}-{random.randint(1000, 9999)}"
 
     async def run(
@@ -110,6 +111,7 @@ class ActionSaveTravelRequest(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         try:
+            tz = timezone(timedelta(hours=8))
             # Get the preview data
             travel_request_preview = tracker.get_slot("travel_request_preview")
             if not travel_request_preview:
@@ -137,8 +139,8 @@ class ActionSaveTravelRequest(Action):
                     "status": "pending",
                 },
                 "timestamps": {
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(tz),
+                    "updated_at": datetime.now(tz)
                 },
                 "documents": [],
                 "notes": []
@@ -347,8 +349,12 @@ class MongoDBClient:
                     logger.error("MongoDB connection string not found in environment variables")
                     raise ValueError("MongoDB connection string not found in environment variables")
                 
-                # Initialize client
-                cls._instance.client = MongoClient(mongodb_uri)
+                # Initialize client with timezone aware settings
+                cls._instance.client = MongoClient(
+                    mongodb_uri,
+                    tz_aware=True,  # Enable timezone awareness
+                    tzinfo=timezone(timedelta(hours=8))  # Set UTC+8 timezone
+                )
                 cls._instance.db = cls._instance.client[db_name]
                 logger.info(f"Successfully connected to MongoDB database: {db_name}")
                 
@@ -1369,7 +1375,42 @@ class ActionGenerateTravelRequest(Action):
                 total_cost += flight_details["return_flight"]["price"]
             total_cost += hotel_details["total_price"]
 
-            # Generate preview message with conditional return flight details
+            # Helper function to extract layovers
+            def extract_layovers(flight_text: str) -> List[Dict[str, Any]]:
+                layovers = []
+                layover_lines = [line for line in flight_text.split('\n') if '🔄 Layovers:' in line]
+                if layover_lines:
+                    layover_info = layover_lines[0].replace('🔄 Layovers: ', '').split(' → ')
+                    for layover in layover_info:
+                        # Parse layover info: "XXX (2h 30m)" format
+                        airport_code = layover.split(' (')[0]
+                        duration = layover.split(' (')[1].replace(')', '')
+                        layovers.append({
+                            "airport": airport_code,
+                            "duration": duration
+                        })
+                return layovers
+
+            if trip_type == "round":
+                # Update outbound and return flight details with layovers
+                outbound_layovers = extract_layovers(outbound_section)
+                return_layovers = extract_layovers(return_section)
+                
+                flight_details["outbound_flight"]["layovers"] = outbound_layovers
+                flight_details["return_flight"]["layovers"] = return_layovers
+            else:
+                # Update single flight details with layovers
+                flight_details["outbound_flight"]["layovers"] = extract_layovers(selected_flight)
+
+            # Update preview message to include layover information
+            def format_layover_info(layovers: List[Dict[str, Any]]) -> str:
+                if not layovers:
+                    return "• No layovers\n"
+                layover_text = "• Layovers:\n"
+                for layover in layovers:
+                    layover_text += f"  - {layover['airport']} ({layover['duration']})\n"
+                return layover_text
+
             preview_message = (
                 f"📋 Travel Request Preview\n\n"
                 f"✈️ Flight Details:\n"
@@ -1383,6 +1424,7 @@ class ActionGenerateTravelRequest(Action):
                 f"• Arrival: {flight_details['outbound_flight']['arrival_datetime']}\n"
                 f"• Duration: {flight_details['outbound_flight']['duration']}\n"
                 f"• Cost: RM {flight_details['outbound_flight']['price']:.2f}\n"
+                f"{format_layover_info(flight_details['outbound_flight']['layovers'])}"
             )
 
             if trip_type == "round":
@@ -1395,6 +1437,7 @@ class ActionGenerateTravelRequest(Action):
                     f"• Arrival: {flight_details['return_flight']['arrival_datetime']}\n"
                     f"• Duration: {flight_details['return_flight']['duration']}\n"
                     f"• Cost: RM {flight_details['return_flight']['price']:.2f}\n"
+                    f"{format_layover_info(flight_details['return_flight']['layovers'])}"
                 )
 
             preview_message += (

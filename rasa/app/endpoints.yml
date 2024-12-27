@@ -11,10 +11,10 @@
 # https://rasa.com/docs/rasa/custom-actions
 
 action_endpoint:
- url: "http://localhost:5055/webhook"
+ url: ${RASA_ACTIONS_URL}
 
 cors:
-  origin: ["http://localhost:3000"]
+  origin: ["${FRONTEND_URL}"]
   methods: ["POST", "OPTIONS"]
   headers: ["Content-Type"]
   credentials: true
