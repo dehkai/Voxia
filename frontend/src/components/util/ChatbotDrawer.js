@@ -132,7 +132,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
       if (isLoggedIn) {
         setIsInitializing(true); // Disable input while initializing
         try {
-          const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+          const response = await fetch(`${process.env.REACT_APP_RASA_SDK_URL}/webhooks/rest/webhook`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -351,7 +351,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
                                         ? button.payload  // Keep the slash for action triggers
                                         : button.payload.replace("/", ""); // Remove slash for basic intents
 
-                                    fetch("http://localhost:5005/webhooks/rest/webhook", {
+                                    fetch(`${process.env.REACT_APP_RASA_SDK_URL}/webhooks/rest/webhook`, {
                                         method: "POST",
                                         headers: {
                                             "Content-Type": "application/json",

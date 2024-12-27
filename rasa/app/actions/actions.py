@@ -3,7 +3,7 @@ from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from amadeus import Client, ResponseError
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 from rasa_sdk.forms import FormValidationAction
 from rasa_sdk.types import DomainDict
@@ -100,7 +100,8 @@ class ActionSaveTravelRequest(Action):
 
     def _generate_request_number(self) -> str:
         """Generate a unique request number"""
-        timestamp = datetime.utcnow()
+        tz = timezone(timedelta(hours=8))  # UTC+8
+        timestamp = datetime.now(tz)
         return f"TR-{timestamp.strftime('%Y%m')}-{random.randint(1000, 9999)}"
 
     async def run(
@@ -110,6 +111,7 @@ class ActionSaveTravelRequest(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         try:
+            tz = timezone(timedelta(hours=8))
             # Get the preview data
             travel_request_preview = tracker.get_slot("travel_request_preview")
             if not travel_request_preview:
@@ -137,8 +139,8 @@ class ActionSaveTravelRequest(Action):
                     "status": "pending",
                 },
                 "timestamps": {
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(tz),
+                    "updated_at": datetime.now(tz)
                 },
                 "documents": [],
                 "notes": []
@@ -347,8 +349,12 @@ class MongoDBClient:
                     logger.error("MongoDB connection string not found in environment variables")
                     raise ValueError("MongoDB connection string not found in environment variables")
                 
-                # Initialize client
-                cls._instance.client = MongoClient(mongodb_uri)
+                # Initialize client with timezone aware settings
+                cls._instance.client = MongoClient(
+                    mongodb_uri,
+                    tz_aware=True,  # Enable timezone awareness
+                    tzinfo=timezone(timedelta(hours=8))  # Set UTC+8 timezone
+                )
                 cls._instance.db = cls._instance.client[db_name]
                 logger.info(f"Successfully connected to MongoDB database: {db_name}")
                 
