@@ -1002,6 +1002,15 @@ class ActionFetchAuthToken(Action):
         return "action_fetch_auth_token"
 
     def run(self, dispatcher: CollectingDispatcher, tracker, domain):
+        # First check if token already exists
+        existing_token = tracker.get_slot("auth_token")
+        existing_email = tracker.get_slot("user_email")
+        
+        if existing_token and existing_email:
+            logger.info(f"Token already exists for user: {existing_email}")
+            dispatcher.utter_message(text="You're already authenticated!")
+            return []
+            
         # Extract the provided email entity from user input
         email = next(tracker.get_latest_entity_values("email"), None)
         
@@ -1009,12 +1018,15 @@ class ActionFetchAuthToken(Action):
         backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
         url = f"{backend_url}/api/auth/fetch-token"
         
+        logger.info(f"Attempting to fetch token for email: {email} from URL: {url}")
+        
         # Ensure email slot is set
         if email:
             # Call your backend API to get the token
             headers = {"Content-Type": "application/json"}
             try:
                 response = requests.post(url, json={"email": email}, headers=headers)
+                logger.info(f"Token fetch response status: {response.status_code}")
                 
                 if response.status_code == 200:
                     token = response.json().get("token")
@@ -1026,11 +1038,12 @@ class ActionFetchAuthToken(Action):
                         return []
                 else:
                     dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+                    logger.error(f"Failed to fetch token. Status code: {response.status_code}")
                     return []
                     
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError as e:
                 dispatcher.utter_message(text="Unable to connect to the authentication service. Please try again later.")
-                logger.error(f"Failed to connect to backend at {url}")
+                logger.error(f"Failed to connect to backend at {url}. Error: {str(e)}")
                 return []
         else:
             dispatcher.utter_message(text="Please provide a valid email address.")
