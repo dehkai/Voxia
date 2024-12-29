@@ -20,6 +20,8 @@ rasa/cache/
 *.pkl
 *.json
 .cache/
+rasa/app/.rasa/cache/cache.db
+rasa/app/actions/__pycache__/
 
 # Rasa model files
 rasa/models/

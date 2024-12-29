@@ -14,6 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Rasa SDK for custom actions
 RUN pip install rasa-sdk
 
+# Train the model
+RUN rasa train
+
 # Expose port 5005 for the Rasa API
 EXPOSE 5005
 

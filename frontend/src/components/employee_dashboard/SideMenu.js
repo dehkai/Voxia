@@ -28,7 +28,7 @@ export default function SideMenu() {
   React.useEffect(() => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:5000/api/auth/profile', {
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,

@@ -62,6 +62,7 @@ stories:
   - story: successful single trip flight booking
     steps:
     - intent: search_flights
+    - action: action_reset_flight_form
     - action: flight_search_form
     - active_loop: flight_search_form
     - intent: single_trip
@@ -93,6 +94,7 @@ stories:
     steps:
     # Start flight search
     - intent: search_flights
+    - action: action_reset_flight_form
     - action: flight_search_form
     - active_loop: flight_search_form
     # Set round trip type
@@ -149,6 +151,7 @@ stories:
   - story: no flights found
     steps:
     - intent: search_flights
+    - action: action_reset_flight_form
     - action: flight_search_form
     - active_loop: flight_search_form
     - intent: single_trip
@@ -182,6 +185,7 @@ stories:
   - story: change trip type during booking
     steps:
     - intent: search_flights
+    - action: action_reset_flight_form
     - action: flight_search_form
     - active_loop: flight_search_form
     - intent: single_trip
@@ -200,6 +204,7 @@ stories:
   - story: flight to hotel transition
     steps:
     - intent: search_flights
+    - action: action_reset_flight_form
     - action: flight_search_form
     - active_loop: flight_search_form
     - intent: single_trip
@@ -279,19 +284,21 @@ stories:
 
   - story: single trip selection flow
     steps:
-      - intent: search_flights
-      - action: flight_search_form
-      - active_loop: flight_search_form
-      - intent: single_trip
-      - action: action_set_trip_type
-      - slot_was_set:
-          - trip_type: "single"
-      - action: flight_search_form
-      - active_loop: flight_search_form
+    - intent: search_flights
+    - action: action_reset_flight_form
+    - action: flight_search_form
+    - active_loop: flight_search_form
+    - intent: single_trip
+    - action: action_set_trip_type
+    - slot_was_set:
+        - trip_type: "single"
+    - action: flight_search_form
+    - active_loop: flight_search_form
 
   - story: book a single trip flight
     steps:
     - intent: search_flights
+    - action: action_reset_flight_form
     - action: flight_search_form
     - active_loop: flight_search_form
     - intent: single_trip
@@ -309,3 +316,31 @@ stories:
       - intent: confirm_save_request
       - action: action_save_travel_request
       - action: action_listen
+
+  - story: direct hotel search
+    steps:
+    - intent: search_hotels
+    - action: action_reset_hotel_form
+    - action: hotel_search_form
+    - active_loop: hotel_search_form
+    - intent: provide_location
+      entities:
+        - city_code: "SIN"
+    - slot_was_set:
+        - city: "SIN"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-15"
+    - slot_was_set:
+        - check_in: "2024-05-15"
+    - intent: provide_travel_dates
+      entities:
+        - date: "2024-05-20"
+    - slot_was_set:
+        - check_out: "2024-05-20"
+    - action: hotel_search_form
+    - active_loop: null
+    - action: action_search_hotels
+    - action: action_mark_hotel_search_complete
+    - slot_was_set:
+        - hotel_search_completed: true

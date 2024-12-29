@@ -1,14 +1,14 @@
-export const fetchChatbotResponse = async (message) => {
+export const fetchChatbotResponse = async (message,email) => {
     try {
         const cleanMessage = message.startsWith('/') ? message.slice(1) : message;
         
-        const response = await fetch("http://localhost:5005/webhooks/rest/webhook", {
+        const response = await fetch(`${process.env.REACT_APP_RASA_SDK_URL}/webhooks/rest/webhook`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ 
-                sender: "user", 
+                sender: email   , 
                 message: cleanMessage 
             }),
         });
