@@ -1,13 +1,21 @@
 FROM rasa/rasa-sdk:3.6.2
 
+# Switch to root user to install dependencies
 USER root
 
+# Set the working directory inside the container
 WORKDIR /app
 
-COPY requirements.txt /app/
+# Copy the requirements file into the container
+COPY ./rasa/app/requirements.txt /app/
 
+# Install dependencies listed in the requirements file
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the actions.py file into the container
+COPY ./rasa/app/actions/actions.py /app/actions.py
+
+# Switch back to a non-root user
 USER 1000
 
 CMD ["start", "--actions", "actions"]

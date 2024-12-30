@@ -36,7 +36,7 @@ export default function MainGrid({ onChatbotClick }) {
   React.useEffect(() => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
-      fetch('http://localhost:5000/api/auth/profile', { // Replace with your backend endpoint
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, { // Replace with your backend endpoint
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
