@@ -1302,7 +1302,13 @@ class ActionSelectHotel(Action):
 class ActionGenerateTravelRequest(Action):
     def name(self) -> Text:
         return "action_generate_travel_request"
-
+    
+    def _generate_request_number(self) -> str:
+        """Generate a unique request number"""
+        tz = timezone(timedelta(hours=8))  # UTC+8
+        timestamp = datetime.now(tz)
+        return f"TR-{timestamp.strftime('%Y%m')}-{random.randint(1000, 9999)}"
+    
     async def run(
         self,
         dispatcher: CollectingDispatcher,
@@ -1525,8 +1531,8 @@ class ActionGenerateTravelRequest(Action):
             backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
             # backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-custom"
             backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-tempo-custom"
-            # backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/download"
-            backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/downloadTempo/{user_email}"
+            backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/downloadTempo"
+            
 
             headers = {
                 "Authorization": f"Bearer {token}",
@@ -1555,7 +1561,8 @@ class ActionGenerateTravelRequest(Action):
                     "current_date": "TESTING!!!!!",
                     "department": "HR Department",
                     "employeeId": "1234567",
-                    "phoneNum": "01743268489"
+                    "phoneNum": "01743268489",
+                    "randomNum": self._generate_request_number()
                 },
                 "flight": {
                     "airLineName": airLineName,
@@ -1606,8 +1613,7 @@ class ActionGenerateTravelRequest(Action):
                 # file_id = response_data.get("fileId")
 
                 # # Construct download link
-                # download_link = f"{backend_url_download}/{file_id}"
-                download_link = f"{backend_url_download}"
+                download_link = f"{backend_url_download}/{data['basicInfo']['randomNum']}"
                 dispatcher.utter_message(
                     text=f"Your PDF has been generated successfully! Click the link to download: {download_link}",
                     buttons=[
@@ -1661,7 +1667,6 @@ class ActionInitializeAuth(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         # Get metadata from the request
-        s
         metadata = tracker.latest_message.get('metadata', {})
         auth_token = metadata.get('auth_token')
         

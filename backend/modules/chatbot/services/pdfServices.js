@@ -89,7 +89,7 @@ const generateCustomPDF = async (data, db) => {
 };
 
 const generateTempoCustomPDF = async (data) => {
-    const filePath = path.join(__dirname, `../../${data.basicInfo.email}.pdf`);
+    const filePath = path.join(__dirname, `../../${data.basicInfo.randomNum}.pdf`);
     const htmlContent = userReportTemplate(data); // Updated template to handle `basicInfo`, `flight`, and `hotel`
 
     return new Promise((resolve, reject) => {
