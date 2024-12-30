@@ -1613,7 +1613,7 @@ class ActionGenerateTravelRequest(Action):
                 # file_id = response_data.get("fileId")
 
                 # # Construct download link
-                download_link = f"{backend_url_download}/{data['basicInfo']['randomNum']}"
+                download_link = f"{backend_url_download}/12345"
                 dispatcher.utter_message(
                     text=f"Your PDF has been generated successfully! Click the link to download: {download_link}",
                     buttons=[

@@ -127,14 +127,31 @@ const downloadTemporeryPDF = async (req, res) => {
             return res.status(400).json({ message: 'File ID is required!' });
         }
 
+        // Whitelist of allowed file IDs (this can be dynamically populated, e.g., from a database)
+        const allowedFiles = {
+            '12345': 'example1.pdf',
+            '67890': 'example2.pdf',
+            'abcdef': 'example3.pdf'
+        };
+
+        const fileName = allowedFiles[fileId];
+        if (!fileName) {
+            return res.status(404).json({ message: 'File not found!' });
+        }
+
         // Define the directory where your PDFs are stored
         const pdfDirectory = path.join(__dirname, '../../');
-        const filePath = path.join(pdfDirectory, `${fileId}.pdf`);
+        const filePath = path.join(pdfDirectory, fileName);
+
+        // Check if the file exists
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: 'File not found!' });
+        }
 
         // Set headers and send the file
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${fileId}.pdf"`
+            'Content-Disposition': `attachment; filename="${fileName}"`
         });
 
         const readStream = fs.createReadStream(filePath);
