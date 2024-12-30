@@ -80,26 +80,26 @@ const userReportTemplate = (data) => {
     <h1 style="text-align: center;">TRAVEL REQUEST FORM</h1>
     <table>
       <tr>
-        <th>Date:</th>
-        <td>(current date)</td>
+        <th>Request Date:</th>
+        <td>${data.basicInfo.current_date || 'Null Value'}</td>
         <th>Department:</th>
-        <td>(dont have yet)</td>
+        <td>${data.basicInfo.department || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Employee Name:</th>
-        <td>TAN CHEE SEN</td>
+        <td>${data.basicInfo.username || 'Null Value'}</td>
         <th>Employee ID:</th>
-        <td>(dont have yet)</td>
+        <td>${data.basicInfo.employeeId || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Phone Number:</th>
-        <td>(dont have yet)</td>
+        <td>${data.basicInfo.phoneNum || 'Null Value'}</td>
         <th>Email Address:</th>
-        <td>tancheesen123@gmail.com</td>
+        <td>${data.basicInfo.email || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Dates of Travel:</th>
-        <td colspan="3">2025-4-12 to 2025-4-13</td>
+        <td colspan="3">-</td>
       </tr>
     </table>
 
@@ -108,34 +108,34 @@ const userReportTemplate = (data) => {
     <table>
         <tr>
         <th>AirLine</th>
-        <td colspan="3">BATIK AIR MALAYSIA</td>
+        <td colspan="3">${data.flight.airLineName || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Origin</th>
-        <td>KUL</td>
+        <td>${data.flight.origin || 'Null Value'}</td>
         <th>Destination</th>
-        <td>ICN</td>
+        <td>${data.flight.destination || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Departure Date</th>
-        <td>2025-02-16</td>
+        <td>${data.flight.departureDate || 'Null Value'}</td>
         <th>Return Date</th>
-        <td>2025-02-16</td>
+        <td>${data.flight.returnDate || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Trip Type</th>
-        <td>Single</td>
+        <td>${data.flight.tripType || 'Null Value'}</td>
         <th>Cabin Class</th>
-        <td>Economy</td>
+        <td>${data.flight.cabinClass || 'Null Value'}</td>
       </tr>
       <tr>
       <th>Flight</th>
-        <td colspan="3" >OD820</td>
+        <td colspan="3" >${data.flight.flightCode || 'Null Value'}</td>
         </tr>
     </table>
     <div class="highlight-box">
       <strong>Selected Flight:</strong><br>
-      💰 Price: RM 614.00<br>
+      💰 Price: RM ${data.flight.flightPrice || 'Null Value'}<br>
     </div>
 
     <!-- Accommodation Information Section -->
@@ -143,30 +143,28 @@ const userReportTemplate = (data) => {
     <table>
         <tr>
         <th>Hotel Name</th>
-        <td colspan="3" >Best Western Jardin De Cluny</td>
+        <td colspan="3" >${data.hotel.hotelName || 'Null Value'}</td>
       </tr>
       <tr>
         <th>City</th>
-        <td colspan="3" >PAR</td>
+        <td colspan="3" >${data.hotel.city || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Check-in Date</th>
-        <td>2025-02-12</td>
+        <td>${data.hotel.check_in_date || 'Null Value'}</td>
         <th>Check-out Date</th>
-        <td>2025-02-16</td>
+        <td>${data.hotel.check_out_date || 'Null Value'}</td>
       </tr>
       <tr>
         <th>Hotel Rating</th>
-        <td>3 stars</td>
+        <td>${data.hotel.hotelRating || 'Null Value'} stars</td>
         <th>Room Category</th>
-        <td>STANDARD_ROOM</td>
+        <td>${data.hotel.roomCategory || 'Null Value'}</td>
       </tr>
     </table>
     <div class="highlight-box">
       <strong>Selected Hotel:</strong><br>
-      💰 Price: RM 4248.50<br>
-      📝 Description: MULTI NIGHT STAY PROMOTION<br>
-      1 DOUBLE BED, NSMK, CLASSIC STANDARD<br>
+      💰 Price: RM ${data.hotel.hotelPrice || 'Null Value'}<br>
     </div>
 
     <!-- Approval Section -->
