@@ -1303,12 +1303,6 @@ class ActionGenerateTravelRequest(Action):
     def name(self) -> Text:
         return "action_generate_travel_request"
     
-    def _generate_request_number(self) -> str:
-        """Generate a unique request number"""
-        tz = timezone(timedelta(hours=8))  # UTC+8
-        timestamp = datetime.now(tz)
-        return f"TR-{timestamp.strftime('%Y%m')}-{random.randint(1000, 9999)}"
-    
     async def run(
         self,
         dispatcher: CollectingDispatcher,
@@ -1562,7 +1556,6 @@ class ActionGenerateTravelRequest(Action):
                     "department": "HR Department",
                     "employeeId": "1234567",
                     "phoneNum": "01743268489",
-                    "randomNum": self._generate_request_number()
                 },
                 "flight": {
                     "airLineName": airLineName,
