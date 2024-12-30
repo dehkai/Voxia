@@ -198,3 +198,8 @@ rules:
     steps:
       - intent: initialize_auth
       - action: action_initialize_auth
+
+  - rule: User opens a link
+    steps:
+      - intent: open_link
+      - action: action_open_link

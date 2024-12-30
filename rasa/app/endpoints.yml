@@ -31,13 +31,13 @@ cors:
 #    password: <password used for authentication>
 #    use_ssl: <whether or not the communication is encrypted, default false>
 
-# tracker_store:
-#     type: mongod
-#     url: mongodb+srv://voxia.bkbvl.mongodb.net
-#     db: Voxia
-#     username: ${USERNAME}
-#     password: ${DB_PASSWORD}
-#     collection: conversations
+tracker_store:
+    type: mongod
+    url: mongodb+srv://voxia.bkbvl.mongodb.net
+    db: Voxia
+    username: ${USERNAME}
+    password: ${DB_PASSWORD}
+    collection: conversations
 
 # Event broker which all conversation events should be streamed to.
 # https://rasa.com/docs/rasa/event-brokers

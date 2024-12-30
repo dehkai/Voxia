@@ -317,6 +317,11 @@ stories:
       - action: action_save_travel_request
       - action: action_listen
 
+  - story: User opens a link
+    steps:
+      - intent: open_link
+      - action: action_open_link
+
   - story: direct hotel search
     steps:
     - intent: search_hotels
