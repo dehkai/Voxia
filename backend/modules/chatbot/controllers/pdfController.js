@@ -131,11 +131,6 @@ const downloadTemporeryPDF = async (req, res) => {
         const pdfDirectory = path.join(__dirname, '../../');
         const filePath = path.join(pdfDirectory, `${fileId}.pdf`);
 
-        // Check if the file exists
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ message: 'File not found!' });
-        }
-
         // Set headers and send the file
         res.set({
             'Content-Type': 'application/pdf',
