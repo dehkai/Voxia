@@ -12,6 +12,8 @@ const {
     createPDFHandler, 
     downloadPDFHandler,
     createCustomPDFHandler,
+    downloadTemporeryPDF,
+    createTempoCustomPDFHandler,
 } = require('./controllers/pdfController');
 
 
@@ -24,9 +26,11 @@ router.delete('/chatbots/:id', deleteChatbotHandler);      // Delete a chatbot b
 
 
 // PDF generation route
-router.post('/chatbots/generate-pdf', authMiddleware, createPDFHandler);
+router.post('/chatbots/generate-pdf', createPDFHandler);
 router.get('/chatbots/generate-pdf/download/:fileId', downloadPDFHandler);
+router.get('/chatbots/generate-pdf/downloadTempo/:fileId', downloadTemporeryPDF);
 router.post('/chatbots/generate-custom', createCustomPDFHandler);
+router.post('/chatbots/generate-tempo-custom', createTempoCustomPDFHandler);
 
 module.exports = {
     chatbotRoutes: router

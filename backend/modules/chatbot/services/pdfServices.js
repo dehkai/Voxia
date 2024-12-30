@@ -34,18 +34,18 @@ const storePDFInMongoDB = async (filePath, filename, db) => {
             .on('error', (error) => reject(error));
     });
 };
-const storePDFMetadata = async (fileId, username) => {
-    const metadata = new PdfMetadata({
-        fileId: fileId,
-        username: username,
+const storePDFMetadata = async (fileId, metadata) => {
+    const pdfMetadata = new PdfMetadata({
+        fileId,
+        ...metadata, // Spread the metadata object to include all fields
     });
 
-    return await metadata.save();
+    return await pdfMetadata.save();
 };
 
 const generateCustomPDF = async (data, db) => {
     const filePath = path.join(__dirname, '../../generated_custom_report.pdf');
-    const htmlContent = userReportTemplate(data);
+    const htmlContent = userReportTemplate(data); // Updated template to handle `basicInfo`, `flight`, and `hotel`
 
     return new Promise((resolve, reject) => {
         wkhtmltopdf(htmlContent, {
@@ -59,8 +59,27 @@ const generateCustomPDF = async (data, db) => {
             .on('end', async () => {
                 try {
                     const pdfId = await storePDFInMongoDB(filePath, 'custom_report.pdf', db);
-                    await storePDFMetadata(pdfId, data.username);
-                    resolve(pdfId); // Resolve with GridFS ID
+
+                    // Store metadata with detailed information
+                    await storePDFMetadata(pdfId, {
+                        username: data.basicInfo.username,
+                        email: data.basicInfo.email,
+                        department: data.basicInfo.department,
+                        employeeId: data.basicInfo.employeeId,
+                        phoneNum: data.basicInfo.phoneNum,
+                        flightDetails: data.flight,
+                        hotelDetails: data.hotel,
+                    });
+                    
+                    fs.unlink(filePath, (err) => {
+                        if (err) {
+                            console.error("Error deleting the file:", err);
+                        } else {
+                            console.log("File deleted successfully:", filePath);
+                        }
+                    });
+
+                    resolve(pdfId);
                 } catch (error) {
                     reject(error);
                 }
@@ -69,4 +88,28 @@ const generateCustomPDF = async (data, db) => {
     });
 };
 
-module.exports = { generatePDF, generateCustomPDF, storePDFMetadata };
+const generateTempoCustomPDF = async (data) => {
+    const filePath = path.join(__dirname, `../../${data.basicInfo.email}.pdf`);
+    const htmlContent = userReportTemplate(data); // Updated template to handle `basicInfo`, `flight`, and `hotel`
+
+    return new Promise((resolve, reject) => {
+        wkhtmltopdf(htmlContent, {
+            output: filePath,
+            pageSize: 'letter',
+            marginTop: '10mm',
+            marginBottom: '10mm',
+            marginLeft: '10mm',
+            marginRight: '10mm',
+        })
+            .on('end', () => {
+                console.log(`PDF successfully generated at: ${filePath}`);
+                resolve(filePath); // Return the file path instead of storing in MongoDB
+            })
+            .on('error', (error) => {
+                console.error('Error generating PDF:', error);
+                reject(error);
+            });
+    });
+};
+
+module.exports = { generatePDF, generateCustomPDF, storePDFMetadata, generateTempoCustomPDF };
