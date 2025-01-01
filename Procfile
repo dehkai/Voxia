@@ -1,0 +1,1 @@
+rasa: cd rasa/app && rasa run --enable-api --cors "*" --port 5005 --endpoints endpoints.yml
