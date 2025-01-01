@@ -1,7 +1,0 @@
-build:
-  buildpacks:
-    - heroku/python
-  config:
-    PATH: "/app/.heroku/python/bin:/app/rasa/app:$PATH"
-  commands:
-    - cd rasa/app && pip install -r requirements.txt
