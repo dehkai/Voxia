@@ -167,7 +167,8 @@ class ActionSaveTravelRequest(Action):
             backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
             backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-custom"
             backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/download"
-
+            backend_url_sendEmail = f"{backend_url}/api/email/sendEmailWithPdf"
+            
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json"
@@ -180,6 +181,29 @@ class ActionSaveTravelRequest(Action):
                 
                 response_data = response.json()
                 file_id = response_data.get("fileId")
+            # Send email with pdf to admin
+                sendToAdmin = {
+                "to": "tancheesen123@hotmail.com",
+                "subject": "Your PDF Report",
+                "text": "Travel Request PDF",
+                "html": "Please find the attached PDF of your travel request.",
+                "fileId": file_id
+                }
+
+                response = requests.post(backend_url_sendEmail, json=sendToAdmin, headers=headers)
+                response.raise_for_status()
+
+            # Send email with pdf to current user
+                sendToUser = {
+                "to": travel_request_preview.get("user_email"),
+                "subject": "Your PDF Report",
+                "text": "Travel Request PDF",
+                "html": "Please find the attached PDF of your travel request.",
+                "fileId": file_id
+                }
+                
+                response = requests.post(backend_url_sendEmail, json=sendToUser, headers=headers)
+                response.raise_for_status()
 
                 # # Construct download link
                 download_link = f"{backend_url_download}/{file_id}"
@@ -1550,7 +1574,7 @@ class ActionGenerateTravelRequest(Action):
             # Sample data to send to the PDF generation API
             data = {
                 "basicInfo": {
-                    "username": "TanCheesen",
+                    "username": tracker.get_slot("user_email"),
                     "email": tracker.get_slot("user_email"),
                     "current_date": "TESTING!!!!!",
                     "department": "HR Department",
