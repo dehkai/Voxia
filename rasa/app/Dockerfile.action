@@ -7,7 +7,7 @@ USER root
 WORKDIR /app
 
 # Copy the requirements file into the container
-COPY ./rasa/app/requirements.txt /app/
+COPY requirements.txt /app/
 
 # Install dependencies listed in the requirements file
 RUN pip install --no-cache-dir -r requirements.txt
