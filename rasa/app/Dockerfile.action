@@ -13,7 +13,7 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the actions.py file into the container
-COPY ./rasa/app/actions/actions.py /app/actions.py
+COPY ./actions/actions.py /app/actions.py
 
 # Switch back to a non-root user
 USER 1000
