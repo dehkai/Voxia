@@ -18,6 +18,8 @@ import ScatterPlotOutlinedIcon from "@mui/icons-material/ScatterPlotOutlined";
 import CloseTwoToneIcon from "@mui/icons-material/CloseTwoTone";
 import AppTheme from "../../shared-theme/AppTheme";
 import { isAuthenticated } from "../../utils/auth";
+import ReactMarkdown from 'react-markdown';
+import DOMPurify from 'dompurify';
 
 const LoadingBubble = () => (
   <ListItem sx={{ justifyContent: "flex-start", alignItems: "flex-start", mb: 1 }}>
@@ -282,6 +284,7 @@ const ChatbotDrawer = ({ open, onClose }) => {
               }
 
               const msg = item.msg;
+              const sanitizedText = DOMPurify.sanitize(msg.text);
               return (
                 <ListItem 
     key={index} 
@@ -319,8 +322,32 @@ const ChatbotDrawer = ({ open, onClose }) => {
             }}
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography component="span" sx={{ whiteSpace: "pre-wrap" }}>
-                    {msg.text}
+                <Typography component="div" sx={{ whiteSpace: "pre-wrap" }}>
+                    <ReactMarkdown
+                        components={{
+                            p: ({ node, ...props }) => (
+                                <span {...props} style={{ margin: 0 }} />
+                            ),
+                            strong: ({ node, ...props }) => (
+                                <strong {...props} style={{ fontWeight: 600 }} />
+                            ),
+                            a: ({ node, ...props }) => (
+                                <a
+                                    {...props}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        color: msg.isBot ? '#1976d2' : '#fff',
+                                        textDecoration: 'underline',
+                                        cursor: 'pointer'
+                                    }}
+                                />
+                            ),
+                        }}
+                        disallowedElements={['img']}
+                    >
+                        {sanitizedText}
+                    </ReactMarkdown>
                 </Typography>
                 {msg.buttons && msg.buttons.length > 0 && (
                     <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>

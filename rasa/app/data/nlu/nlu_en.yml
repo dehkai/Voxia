@@ -428,3 +428,17 @@ nlu:
       - yes please save
       - save my request
       - confirm and save
+
+  #bibian intent
+  - intent: join_membership
+    examples: |
+      - How do I join the membership
+      - Can I sign up for a membership?
+      - I want to become a member.
+      - What information do I need to join?
+      - Is there a membership registration process?
+      - Can you help me join the membership?
+      - What are the steps to become a member?
+      - Do I need to provide an email to join membership?
+      
+

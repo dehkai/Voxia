@@ -350,3 +350,9 @@ stories:
     - action: action_mark_hotel_search_complete
     - slot_was_set:
         - hotel_search_completed: true
+
+  - story: join membership
+    steps:
+    - intent: join_membership
+    - action: action_detect_language
+    - action: utter_join_membership

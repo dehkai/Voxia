@@ -26,6 +26,7 @@ intents:
   - confirm_save_request
   - initialize_auth
   - open_link
+  - join_membership
 
 entities:
   - airport_code
@@ -346,6 +347,29 @@ responses:
 
   utter_ask_hotel_confirmation:
     - text: Would you like to confirm this hotel booking?
+
+  #bibian utter
+  utter_join_membership:
+    - condition:
+        - type: slot
+          name: user_language
+          value: "en"
+      text: "Quick registration in 1 minute [[Free registration]](https://www.bibian.co.jp/joinus.php). Or refer to [[Join Member]](https://www.bibian.co.jp/service_center.php?f_id=10) instructions before registering."
+    - condition:
+        - type: slot
+          name: user_language
+          value: "ja"
+      text: "1分で簡単登録[【登録無料】](https://www.bibian.co.jp/joinus.php)。または、登録する前に[[メンバーに参加する]](https://www.bibian.co.jp/service_center.php?f_id=10)の手順を参照してください。"
+    - condition:
+        - type: slot
+          name: user_language
+          value: "zh-cn"
+      text: "1分钟快速注册[【免费注册】](https://www.bibian.co.jp/joinus.php)。或参考[【加入会员】](https://www.bibian.co.jp/service_center.php?f_id=10)说明后再进行注册。"
+    - condition:
+        - type: slot
+          name: user_language
+          value: "zh-tw"
+      text: "1分鐘快速註冊[【免費註冊】](https://www.bibian.co.jp/joinus.php)。或參考[【加入會員】](https://www.bibian.co.jp/service_center.php?f_id=10)說明後再進行註冊。"
 
 actions:
   - action_search_flights
