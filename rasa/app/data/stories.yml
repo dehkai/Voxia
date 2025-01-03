@@ -41,6 +41,7 @@ stories:
   - story: happy greeting path
     steps:
     - intent: greet
+    - action: action_detect_language
     - action: utter_greet
 
   - story: happy mood path
