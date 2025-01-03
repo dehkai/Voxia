@@ -16,6 +16,9 @@ import requests
 from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted, FollowupAction
 import random
 import webbrowser
+from spacy_fastlang import LanguageDetector
+import spacy
+import opencc
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -23,6 +26,64 @@ load_dotenv(dotenv_path=env_path)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class ActionDetectLanguage(Action):
+    def name(self) -> str:
+        return "action_detect_language"
+
+    def is_traditional_chinese(self, text: str) -> bool:
+        """Detect if the text contains Traditional Chinese characters using OpenCC."""
+        try:
+            # Initialize OpenCC for Simplified to Traditional conversion
+            converter = opencc.OpenCC('s2t')  # Make sure this file exists
+            
+            # Convert the text from Simplified Chinese to Traditional Chinese
+            converted_text = converter.convert(text)
+            
+            # Log the original and converted text for debugging
+            logger.info(f"Original text: {text}")
+            logger.info(f"Converted text: {converted_text}")
+            
+            # If the original text is different from the converted text, it indicates Traditional Chinese characters
+            if text != converted_text:
+                logger.info("Text contains Traditional Chinese characters.")
+                return False  # Text contains Traditional Chinese characters
+            else:
+                logger.info("Text does not contain Traditional Chinese characters.")
+                return True  # Text does not contain Traditional Chinese characters
+        except Exception as e:
+            print(f"Error in OpenCC conversion: {e}")
+            return False
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Initialize the spaCy model with the language detector
+        nlp = spacy.blank("en")  # Start with a blank English pipeline
+        language_detector = LanguageDetector()
+        nlp.add_pipe("language_detector", last=True)
+
+        # Get the user's message
+        user_message = tracker.latest_message.get('text')
+        if not user_message:
+            dispatcher.utter_message(text="No text provided to detect language.")
+            return []
+
+        # Detect language
+        doc = nlp(user_message)
+        detected_language = doc._.language # Correct method to detect language
+        # detected_language, _ = langid.classify(user_message)
+
+        # Check if the language is Chinese
+        if detected_language == "zh":
+            if self.is_traditional_chinese(user_message):
+                logger.info("change to zh-tw")
+                detected_language = "zh-tw"  # Traditional Chinese
+            else:
+                logger.info("change to zh-cn")
+                detected_language = "zh-cn"  # Simplified Chinese
+        return [SlotSet("user_language", detected_language)]
 
 class ActionResetHotelForm(Action):
     """Custom action to reset hotel-related slots before starting a new hotel search."""
