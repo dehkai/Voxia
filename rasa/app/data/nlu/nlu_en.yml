@@ -1,6 +1,12 @@
 version: "3.1"
 
 nlu:
+
+  - intent: open_link
+    examples: |
+      - "/open_link{\"link\": \"https://example.com/download.pdf\"}"
+      - Download it
+
   - intent: restart_conversation
     examples: |
       - restart
@@ -96,6 +102,7 @@ nlu:
       - Can you display the preferences you have for me?
       - Show me my stored preferences
       - I'd like to know my preferences
+      - 显示我的偏好
 
   - intent: greet
     examples: |
@@ -112,6 +119,11 @@ nlu:
       - goodmorning
       - goodevening
       - good afternoon
+      - 你好
+      - 嗨
+      - 早上好
+      - 下午好
+      - 晚上好
 
   - intent: goodbye
     examples: |

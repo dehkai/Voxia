@@ -15,6 +15,10 @@ from pymongo.collection import Collection
 import requests
 from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted, FollowupAction
 import random
+import webbrowser
+from spacy_fastlang import LanguageDetector
+import spacy
+import opencc
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -22,6 +26,64 @@ load_dotenv(dotenv_path=env_path)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class ActionDetectLanguage(Action):
+    def name(self) -> str:
+        return "action_detect_language"
+
+    def is_traditional_chinese(self, text: str) -> bool:
+        """Detect if the text contains Traditional Chinese characters using OpenCC."""
+        try:
+            # Initialize OpenCC for Simplified to Traditional conversion
+            converter = opencc.OpenCC('s2t')  # Make sure this file exists
+            
+            # Convert the text from Simplified Chinese to Traditional Chinese
+            converted_text = converter.convert(text)
+            
+            # Log the original and converted text for debugging
+            logger.info(f"Original text: {text}")
+            logger.info(f"Converted text: {converted_text}")
+            
+            # If the original text is different from the converted text, it indicates Traditional Chinese characters
+            if text != converted_text:
+                logger.info("Text contains Traditional Chinese characters.")
+                return False  # Text contains Traditional Chinese characters
+            else:
+                logger.info("Text does not contain Traditional Chinese characters.")
+                return True  # Text does not contain Traditional Chinese characters
+        except Exception as e:
+            print(f"Error in OpenCC conversion: {e}")
+            return False
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Initialize the spaCy model with the language detector
+        nlp = spacy.blank("en")  # Start with a blank English pipeline
+        language_detector = LanguageDetector()
+        nlp.add_pipe("language_detector", last=True)
+
+        # Get the user's message
+        user_message = tracker.latest_message.get('text')
+        if not user_message:
+            dispatcher.utter_message(text="No text provided to detect language.")
+            return []
+
+        # Detect language
+        doc = nlp(user_message)
+        detected_language = doc._.language # Correct method to detect language
+        # detected_language, _ = langid.classify(user_message)
+
+        # Check if the language is Chinese
+        if detected_language == "zh":
+            if self.is_traditional_chinese(user_message):
+                logger.info("change to zh-tw")
+                detected_language = "zh-tw"  # Traditional Chinese
+            else:
+                logger.info("change to zh-cn")
+                detected_language = "zh-cn"  # Simplified Chinese
+        return [SlotSet("user_language", detected_language)]
 
 class ActionResetHotelForm(Action):
     """Custom action to reset hotel-related slots before starting a new hotel search."""
@@ -83,6 +145,7 @@ class ActionResetFlightForm(Action):
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        logger.info("Action 'action_reset_flight_form' started.")
         return [
             SlotSet("origin", None),
             SlotSet("destination", None),
@@ -111,9 +174,12 @@ class ActionSaveTravelRequest(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         try:
+            logger.info("Action 'action_save_travel_request' started.")
             tz = timezone(timedelta(hours=8))
             # Get the preview data
             travel_request_preview = tracker.get_slot("travel_request_preview")
+            data = travel_request_preview.get("pdfData")
+            logger.info("this is pdfData", data)
             if not travel_request_preview:
                 dispatcher.utter_message(
                     text="No travel request preview found. Please start over."
@@ -155,6 +221,60 @@ class ActionSaveTravelRequest(Action):
             # Save to MongoDB
             db_client = MongoDBClient()
             result = db_client.database["travel_requests"].insert_one(travel_request)
+
+            # generate pdf and save in mongoDb
+            token = tracker.get_slot("auth_token")
+            # Define the URL for the backend PDF generation endpoint
+            backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+            backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-custom"
+            backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/download"
+            backend_url_sendEmail = f"{backend_url}/api/email/sendEmailWithPdf"
+            
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+
+            # Make a request to the backend to generate the PDF
+            try:
+                response = requests.post(backend_url_pdf, json=data, headers=headers)
+                response.raise_for_status()
+                
+                response_data = response.json()
+                file_id = response_data.get("fileId")
+            # Send email with pdf to admin
+                sendToAdmin = {
+                "to": "tancheesen123@hotmail.com",
+                "subject": "Your PDF Report",
+                "text": "Travel Request PDF",
+                "html": "Please find the attached PDF of your travel request.",
+                "fileId": file_id
+                }
+
+                response = requests.post(backend_url_sendEmail, json=sendToAdmin, headers=headers)
+                response.raise_for_status()
+
+            # Send email with pdf to current user
+                sendToUser = {
+                "to": travel_request_preview.get("user_email"),
+                "subject": "Your PDF Report",
+                "text": "Travel Request PDF",
+                "html": "Please find the attached PDF of your travel request.",
+                "fileId": file_id
+                }
+                
+                response = requests.post(backend_url_sendEmail, json=sendToUser, headers=headers)
+                response.raise_for_status()
+
+                # # Construct download link
+                download_link = f"{backend_url_download}/{file_id}"
+                dispatcher.utter_message(
+                    text=f"Your PDF has been generated successfully! Click the link to download: {download_link}",
+                )
+
+            except requests.exceptions.RequestException as e:
+                dispatcher.utter_message(text="Sorry, an error occurred while generating the PDF.")
+                print(f"Error generating PDF: {e}")
 
             if result.inserted_id:
                 # Create a more detailed confirmation message based on trip type
@@ -235,6 +355,7 @@ class ActionMarkHotelSearchComplete(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        logger.info("Action 'action_mark_hotel_search_complete' started.")
         selected_hotel = tracker.get_slot("selected_hotel")
         if not selected_hotel:
             return []  
@@ -270,7 +391,7 @@ class ActionFetchUserPreferences(Action):
     async def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: dict):
         # Fetch the token from the tracker
         token = tracker.get_slot("auth_token")
-        
+        logger.info("Action 'action_fetch_user_preferences' started.")
         if not token:
             dispatcher.utter_message(text="No valid token found. Please log in again.")
             return []
@@ -313,6 +434,7 @@ class ActionRestartConversation(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        logger.info("Action 'action_restart_conversation' started.")
         # Clear all slots
         events = [AllSlotsReset()]
         
@@ -413,6 +535,7 @@ class ActionSetTripType(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
+        logger.info("Action 'action_set_trip_type' started.")
         intent = tracker.latest_message.get('intent', {}).get('name')
         
         if intent == "single_trip":
@@ -434,6 +557,7 @@ class ActionSearchFlights(Action):
         
     def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single", cabin_class: str = None) -> bool:
         """Validate flight search parameters"""
+        logger.info("Action 'action_search_flights' started.")
         if not all([origin, destination, departure_date]):
             return False
             
@@ -658,6 +782,7 @@ class ActionSearchHotels(Action):
         return "action_search_hotels"
 
     def validate_hotel_params(self, city: str, check_in: str, check_out: str, hotel_rating: str) -> bool:
+        logger.info("Action 'action_search_hotels' started.")
         """Validate hotel search parameters"""
         if not all([city, check_in, check_out]):
             return False
@@ -880,6 +1005,7 @@ class ValidateFlightSearchForm(FormValidationAction):
         tracker: Tracker,
         domain: DomainDict,
     ) -> Dict[Text, Any]:
+        logger.info("Action 'validate_flight_search_form' started.")
         intent = tracker.latest_message['intent'].get('name')
         if intent == "single_trip":
             return {"trip_type": "single"}
@@ -943,6 +1069,7 @@ class ActionGeneratePDF(Action):
         return "action_generate_pdf"
 
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
+        logger.info("Action 'action_generate_pdf' started.")
         token = tracker.get_slot("auth_token")
         # Define the URL for the backend PDF generation endpoint
         backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
@@ -953,9 +1080,14 @@ class ActionGeneratePDF(Action):
             "text": "This is a sample text to include in the PDF."
         }
 
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
         # Make a request to the backend to generate the PDF
         try:
-            response = requests.post(backend_url_pdf, json=data)
+            response = requests.post(backend_url_pdf, json=data, headers=headers)
             response.raise_for_status()
 
             # Construct download link
@@ -997,6 +1129,16 @@ class ActionFetchAuthToken(Action):
         return "action_fetch_auth_token"
 
     def run(self, dispatcher: CollectingDispatcher, tracker, domain):
+        logger.info("Action 'action_fetch_auth_token' started.")
+        # First check if token already exists
+        existing_token = tracker.get_slot("auth_token")
+        existing_email = tracker.get_slot("user_email")
+        
+        if existing_token and existing_email:
+            logger.info(f"Token already exists for user: {existing_email}")
+            dispatcher.utter_message(text="You're already authenticated!")
+            return []
+            
         # Extract the provided email entity from user input
         email = next(tracker.get_latest_entity_values("email"), None)
         
@@ -1004,12 +1146,15 @@ class ActionFetchAuthToken(Action):
         backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
         url = f"{backend_url}/api/auth/fetch-token"
         
+        logger.info(f"Attempting to fetch token for email: {email} from URL: {url}")
+        
         # Ensure email slot is set
         if email:
             # Call your backend API to get the token
             headers = {"Content-Type": "application/json"}
             try:
                 response = requests.post(url, json={"email": email}, headers=headers)
+                logger.info(f"Token fetch response status: {response.status_code}")
                 
                 if response.status_code == 200:
                     token = response.json().get("token")
@@ -1021,11 +1166,12 @@ class ActionFetchAuthToken(Action):
                         return []
                 else:
                     dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+                    logger.error(f"Failed to fetch token. Status code: {response.status_code}")
                     return []
                     
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError as e:
                 dispatcher.utter_message(text="Unable to connect to the authentication service. Please try again later.")
-                logger.error(f"Failed to connect to backend at {url}")
+                logger.error(f"Failed to connect to backend at {url}. Error: {str(e)}")
                 return []
         else:
             dispatcher.utter_message(text="Please provide a valid email address.")
@@ -1038,7 +1184,7 @@ class ActionCheckTokenStatus(Action):
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
         # Retrieve token from the 'auth_token' slot
         token = tracker.get_slot("auth_token")
-
+        logger.info("Action 'action_check_token_status' started.")
         if token:
             # Send token status if it exists
             dispatcher.utter_message(text=f"Your authentication token is: {token}")
@@ -1063,6 +1209,7 @@ class ActionSelectFlight(Action):
         trip_type = tracker.get_slot("trip_type")
         
         # Extract the flight number from the message or payload
+        logger.info("Action 'action_select_flight' started.")
         if message.startswith('/select_flight'):
             # Handle button payload
             import json
@@ -1167,6 +1314,7 @@ class ActionSelectHotel(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         try:
+            logger.info("Action 'action_select_hotel' started.")
             # First try to get hotel_number from entities
             entities = tracker.latest_message.get('entities', [])
             hotel_number = next(
@@ -1239,7 +1387,7 @@ class ActionSelectHotel(Action):
 class ActionGenerateTravelRequest(Action):
     def name(self) -> Text:
         return "action_generate_travel_request"
-
+    
     async def run(
         self,
         dispatcher: CollectingDispatcher,
@@ -1247,6 +1395,7 @@ class ActionGenerateTravelRequest(Action):
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
         try:
+            logger.info("Action 'action_generate_travel_request' started.")
             # Get selected flight and hotel
             selected_flight = tracker.get_slot("selected_flight")
             selected_hotel = tracker.get_slot("selected_hotel")
@@ -1423,6 +1572,8 @@ class ActionGenerateTravelRequest(Action):
             )
 
             if trip_type == "round":
+                cabinClass = flight_details['return_flight']['cabin_class']
+                flightPrice = flight_details['return_flight']['price']
                 preview_message += (
                     f"\nReturn Flight:\n"
                     f"• Airline: {flight_details['return_flight']['airline']}\n"
@@ -1434,6 +1585,38 @@ class ActionGenerateTravelRequest(Action):
                     f"• Cost: RM {flight_details['return_flight']['price']:.2f}\n"
                     f"{format_layover_info(flight_details['return_flight']['layovers'])}"
                 )
+            
+            airLineName = flight_details['outbound_flight']['airline']
+            origin = flight_details['origin']['airport_code']
+            destination = flight_details['destination']['airport_code']
+            tripType = flight_details['trip_type'].title()
+            cabinClass = flight_details['outbound_flight']['cabin_class']
+            flightCode = flight_details['outbound_flight']['flight_number']
+            flightPrice = flight_details['outbound_flight']['price']
+            
+
+            hotelName = hotel_details['hotel_name']
+            hotelCheckIn = hotel_details['check_in']
+            hotelCheckOut = hotel_details['check_out']
+            hotelRating = hotel_details['rating']
+            hotelRoomCategory = hotel_details['room_type']
+            hotelTotalPrice = hotel_details['total_price']
+
+
+            # generate pdf
+
+            token = tracker.get_slot("auth_token")
+            # Define the URL for the backend PDF generation endpoint
+            backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+            # backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-custom"
+            backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-tempo-custom"
+            backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/downloadTempo"
+            
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
 
             preview_message += (
                 f"\n🏨 Hotel Details:\n"
@@ -1448,13 +1631,45 @@ class ActionGenerateTravelRequest(Action):
                 f"💰 Total Trip Cost: RM {total_cost:.2f}\n\n"
                 f"Would you like to confirm and save this travel request?"
             )
-
+            
+            # Sample data to send to the PDF generation API
+            data = {
+                "basicInfo": {
+                    "username": tracker.get_slot("user_email"),
+                    "email": tracker.get_slot("user_email"),
+                    "current_date": "TESTING!!!!!",
+                    "department": "HR Department",
+                    "employeeId": "1234567",
+                    "phoneNum": "01743268489",
+                },
+                "flight": {
+                    "airLineName": airLineName,
+                    "origin": origin,
+                    "destination": destination,
+                    "departureDate": tracker.get_slot("departure_date"),
+                    "returnDate": tracker.get_slot("return_date"),
+                    "tripType": tripType,
+                    "cabinClass": cabinClass,
+                    "flightCode": flightCode,
+                    "flightPrice": flightPrice
+                },
+                "hotel": {
+                    "hotelName": hotelName,
+                    "city": tracker.get_slot("city"),
+                    "check_in_date": hotelCheckIn,
+                    "check_out_date": hotelCheckOut,
+                    "hotelRating": hotelRating,
+                    "roomCategory": hotelRoomCategory,
+                    "hotelPrice": hotelTotalPrice,
+                }
+            }
             # Create the complete travel request object
             travel_request = {
                 "flight_details": flight_details,
                 "hotel_details": hotel_details,
                 "total_cost": total_cost,
                 "user_email": user_email,
+                "pdfData" : data,
                 "preview_message": preview_message
             }
 
@@ -1467,6 +1682,30 @@ class ActionGenerateTravelRequest(Action):
                 ]
             )
 
+            # Make a request to the backend to generate the PDF
+            try:
+                response = requests.post(backend_url_pdf, json=data, headers=headers)
+                response.raise_for_status()
+                
+                response_data = response.json()
+                # file_id = response_data.get("fileId")
+
+                # # Construct download link
+                download_link = f"{backend_url_download}/12345"
+                dispatcher.utter_message(
+                    text=f"Your PDF has been generated successfully! Click the link to download: {download_link}",
+                    buttons=[
+                        {
+                            "title": "Download it",
+                            "payload": f"/open_link{{\"link\": \"{download_link}\"}}"
+                        }
+                    ]
+                )
+
+            except requests.exceptions.RequestException as e:
+                dispatcher.utter_message(text="Sorry, an error occurred while generating the PDF.")
+                print(f"Error generating PDF: {e}")
+
             return [SlotSet("travel_request_preview", travel_request)]
 
         except Exception as e:
@@ -1474,7 +1713,27 @@ class ActionGenerateTravelRequest(Action):
                 text=f"Error generating travel request preview: {str(e)}"
             )
             return []
+class ActionOpenLink(Action):
+    def name(self) -> str:
+        return "action_open_link"
 
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: dict):
+        logger.info("Action 'action_open_link' started.")
+        link = tracker.get_slot('link')
+        if link:
+            # Open the link in the user's default browser (or perform any other action you need)
+            try:
+                webbrowser.open(link)
+                dispatcher.utter_message(text="Opening the link...")
+            except Exception as e:
+                dispatcher.utter_message(text=f"Failed to open the link: {e}")
+        else:
+            error_message = "The 'link' slot is empty. Cannot open the link."
+            dispatcher.utter_message(text=error_message)
+            # Optionally, log the error or take other actions
+            print(error_message)  # Logs to the console for debugging
+
+        return []
 class ActionInitializeAuth(Action):
     def name(self) -> Text:
         return "action_initialize_auth"

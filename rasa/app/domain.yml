@@ -25,6 +25,7 @@ intents:
   - select_hotel
   - confirm_save_request
   - initialize_auth
+  - open_link
 
 entities:
   - airport_code
@@ -32,8 +33,24 @@ entities:
   - date
   - trip_type
   - email
+  - link_download
+  - language
 
 slots:
+
+  link_pdf:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: link_download
+    influence_conversation: true
+
+  user_language:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: language
+    influence_conversation: false
 
   origin:
     type: text
@@ -234,7 +251,26 @@ responses:
     - text: "Your authentication token is: {token}"
 
   utter_greet:
-    - text: "Hello! How can I help you today?"
+    - condition:
+        - type: slot
+          name: user_language
+          value: "en"
+      text: "Hello!"
+    - condition:
+        - type: slot
+          name: user_language
+          value: "ja"
+      text: "こんにちは！"
+    - condition:
+        - type: slot
+          name: user_language
+          value: "zh-cn"
+      text: "你好！"
+    - condition:
+        - type: slot
+          name: user_language
+          value: "zh-tw"
+      text: "您好！"
 
   utter_cheer_up:
   - text: "Here is something to cheer you up:"
@@ -335,6 +371,8 @@ actions:
   - action_generate_travel_request
   - action_save_travel_request
   - action_initialize_auth
+  - action_open_link
+  - action_detect_language
 
 forms:
   flight_search_form:
