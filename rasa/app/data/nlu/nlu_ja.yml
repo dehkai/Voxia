@@ -22,3 +22,48 @@ nlu:
       - 会員になるにはどのような手順がありますか?
       - メンバーシップに参加するには電子メールを提供する必要がありますか?
 
+  - intent: inform
+    examples: |
+      - NT$[1500](price)以下
+      - NT$[3000](price)以上
+      - NT$[1500](price)から[3000](price)
+      - NT$[1500](price)ぐらい
+      - NT$[3000](price)程度
+      - 約NT$[1500](price)
+      - [1500](price)元以下
+      - [3000](price)元以上
+      - [1500](price)から[3000](price)元
+
+  - intent: request_product_recommendation
+    examples: |
+      - 商品をおすすめしてください
+      - おすすめの商品を教えてください
+      - どんな商品がありますか
+      - 人気商品を見せてください
+      - 今トレンドの商品は何ですか
+      - 商品を探しています
+      - おすすめは何ですか
+      - いい商品はありますか
+
+  - intent: provide_product_category
+    examples: |
+      - [化粧品](product_category)を探しています
+      - [電化製品](product_category)を見せてください
+      - [ファッション](product_category)アイテムを見たいです
+      - [美容](product_category)商品はありますか
+      - [家電](product_category)
+      - [おもちゃ](product_category)
+      - [スキンケア](product_category)商品
+      - [デジタル機器](product_category)
+
+  - intent: purchase_product
+    examples: |
+      - これを購入したいです
+      - この商品の購入方法を教えてください
+      - これを注文したいです
+      - カートに入れる
+      - 今すぐ購入
+      - この商品を購入
+      - 注文します
+      - 買いたいです
+

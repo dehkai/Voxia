@@ -27,6 +27,12 @@ intents:
   - initialize_auth
   - open_link
   - join_membership
+  - request_product_recommendation
+  - provide_product_category
+  - purchase_product
+  - ask_popular_products
+  - ask_product_details
+  - inform
 
 entities:
   - airport_code
@@ -36,6 +42,10 @@ entities:
   - email
   - link_download
   - language
+  - product_category
+  - product_id
+  - price_range
+  - product_keyword
 
 slots:
 
@@ -218,6 +228,33 @@ slots:
     mappings:
       - type: custom
 
+  product_category:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: product_category
+
+  price_range:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: price_range
+
+  product_keyword:
+    type: text
+    influence_conversation: true
+    mappings:
+      - type: from_entity
+        entity: product_keyword
+
+  recommended_products:
+    type: list
+    influence_conversation: true
+    mappings:
+      - type: custom
+
 responses:
 
   utter_confirm_save:
@@ -371,6 +408,50 @@ responses:
           value: "zh-tw"
       text: "1分鐘快速註冊[【免費註冊】](https://www.bibian.co.jp/joinus.php)。或參考[【加入會員】](https://www.bibian.co.jp/service_center.php?f_id=10)說明後再進行註冊。"
 
+  utter_ask_product_category:
+    - text: "What kind of product are you looking for? (e.g., cosmetics, electronics, fashion)"
+      condition:
+        - type: slot
+          name: user_language
+          value: "en"
+    - text: "どのような商品をお探しですか？（例：化粧品、電化製品、ファッション）"
+      condition:
+        - type: slot
+          name: user_language
+          value: "ja"
+    - text: "您在寻找什么类型的商品？（例如：化妆品、电子产品、时尚用品）"
+      condition:
+        - type: slot
+          name: user_language
+          value: "zh-cn"
+    - text: "您在尋找什麼類型的商品？（例如：化妝品、電子產品、時尚用品）"
+      condition:
+        - type: slot
+          name: user_language
+          value: "zh-tw"
+
+  utter_ask_price_range:
+    - text: "What's your budget range? (e.g., under NT$1500, NT$1500-3000, over NT$3000)"
+      condition:
+        - type: slot
+          name: user_language
+          value: "en"
+    - text: "予算範囲を教えてください（例：NT$1500以下、NT$1500-3000、NT$3000以上）"
+      condition:
+        - type: slot
+          name: user_language
+          value: "ja"
+    - text: "您的预算范围是多少？（例如：1500元以下、1500-3000元、3000元以上）"
+      condition:
+        - type: slot
+          name: user_language
+          value: "zh-cn"
+    - text: "您的預算範圍是多少？（例如：1500元以下、1500-3000元、3000元以上）"
+      condition:
+        - type: slot
+          name: user_language
+          value: "zh-tw"
+
 actions:
   - action_search_flights
   - action_search_hotels
@@ -397,6 +478,9 @@ actions:
   - action_initialize_auth
   - action_open_link
   - action_detect_language
+  - action_recommend_products
+  - action_show_product_details
+  - action_process_purchase
 
 forms:
   flight_search_form:
@@ -412,6 +496,11 @@ forms:
       - city
       - check_in
       - check_out
+
+  product_recommendation_form:
+    required_slots:
+      - product_category
+      - price_range
 
 session_config:
   session_expiration_time: 60

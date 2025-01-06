@@ -19,3 +19,48 @@ nlu:
       - 成為會員的步驟是什麼？
       - 我需要提供電子郵件才能加入會員嗎？
 
+  - intent: request_product_recommendation
+    examples: |
+      - 推薦一些商品
+      - 幫我推薦商品
+      - 有什麼推薦的商品嗎
+      - 給我看看熱門商品
+      - 現在什麼商品比較流行
+      - 幫我找一些商品
+      - 有什麼好東西推薦嗎
+      - 推薦點什麼好呢
+
+  - intent: provide_product_category
+    examples: |
+      - 我想看看[化妝品](product_category)
+      - 給我看看[電子產品](product_category)
+      - 我要看[時尚](product_category)商品
+      - 有什麼[美妝](product_category)產品嗎
+      - [家電](product_category)
+      - [玩具](product_category)
+      - 找找[護膚品](product_category)
+      - 看看[數碼](product_category)產品
+
+  - intent: purchase_product
+    examples: |
+      - 我要買這個
+      - 怎麼購買這個商品
+      - 我想訂購這個
+      - 加入購物車
+      - 立即購買
+      - 購買這件商品
+      - 我要下單
+      - 幫我買這個
+
+  - intent: inform
+    examples: |
+      - [1500](price)元以下
+      - [3000](price)元以上
+      - [1500](price)-[3000](price)元
+      - [1500](price)到[3000](price)元
+      - 低於[1500](price)元
+      - 大約[1500](price)元
+      - 大概[3000](price)元左右
+      - NT$[1500](price)以下
+      - NT$[3000](price)以上
+

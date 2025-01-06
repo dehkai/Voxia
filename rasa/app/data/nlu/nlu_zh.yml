@@ -17,3 +17,48 @@ nlu:
       - 你能帮我加入会员吗？
       - 成为会员的步骤是什么？
       - 我需要提供电子邮件才能加入会员吗？？
+
+  - intent: inform
+    examples: |
+      - [1500](price)元以下
+      - [3000](price)元以上
+      - [1500](price)-[3000](price)元
+      - [1500](price)到[3000](price)元
+      - 低于[1500](price)元
+      - 大约[1500](price)元
+      - 大概[3000](price)元左右
+      - NT$[1500](price)以下
+      - NT$[3000](price)以上
+      - NT$[1500](price)到NT$[3000](price)
+
+  - intent: request_product_recommendation
+    examples: |
+      - 推荐一些商品
+      - 帮我推荐商品
+      - 有什么推荐的商品吗
+      - 给我看看热门商品
+      - 现在什么商品比较流行
+      - 帮我找一些商品
+      - 有什么好东西推荐吗
+      - 推荐点什么好呢
+
+  - intent: provide_product_category
+    examples: |
+      - 我想看看[化妆品](product_category)
+      - 给我看看[电子产品](product_category)
+      - 我要看[时尚](product_category)商品
+      - 有什么[美妆](product_category)产品吗
+      - [家电](product_category)
+      - [电子产品](product_category)
+      - [化妆品](product_category)
+
+  - intent: purchase_product
+    examples: |
+      - 我要买这个
+      - 怎么购买这个商品
+      - 我想订购这个
+      - 加入购物车
+      - 立即购买
+      - 购买这件商品
+      - 我要下单
+      - 帮我买这个

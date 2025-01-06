@@ -1,5 +1,5 @@
 import re
-from typing import Any, Text, Dict, List
+from typing import Any, Text, Dict, List, Tuple
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from amadeus import Client, ResponseError
@@ -19,6 +19,7 @@ import webbrowser
 from spacy_fastlang import LanguageDetector
 import spacy
 import opencc
+import json
 
 # Load environment variables
 env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", ".env"))
@@ -465,7 +466,7 @@ class MongoDBClient:
             try:
                 # Get MongoDB connection string from environment variables
                 mongodb_uri = os.getenv("MONGODB_ATLAS_URI")
-                db_name = "Voxia"
+                db_name = "Voxia"  # 使用 Voxia 作为数据库名
                 
                 if not mongodb_uri:
                     logger.error("MongoDB connection string not found in environment variables")
@@ -488,6 +489,7 @@ class MongoDBClient:
     @property
     def database(self) -> Database:
         return self.db
+
 class AmadeusClient:
     """Singleton class for Amadeus API client"""
     _instance = None
@@ -1124,6 +1126,7 @@ class ActionGeneratePDF(Action):
 #             print(f"Error fetching token: {e}")
 
 #         return []
+
 class ActionFetchAuthToken(Action):
     def name(self) -> str:
         return "action_fetch_auth_token"
@@ -1713,6 +1716,7 @@ class ActionGenerateTravelRequest(Action):
                 text=f"Error generating travel request preview: {str(e)}"
             )
             return []
+
 class ActionOpenLink(Action):
     def name(self) -> str:
         return "action_open_link"
@@ -1734,6 +1738,7 @@ class ActionOpenLink(Action):
             print(error_message)  # Logs to the console for debugging
 
         return []
+
 class ActionInitializeAuth(Action):
     def name(self) -> Text:
         return "action_initialize_auth"
@@ -1775,3 +1780,257 @@ class ActionInitializeAuth(Action):
         except Exception as e:
             logger.error(f"Error initializing auth: {str(e)}")
             return []
+
+class ActionRecommendProducts(Action):
+    def name(self) -> Text:
+        return "action_recommend_products"
+    
+    CATEGORY_MAPPING = {
+        "电子产品": "electronics",
+        "化妆品": "cosmetics",
+        "家电": "electronics",
+        "美妆": "cosmetics",
+        "数码": "electronics",
+        "電化製品": "electronics",
+        "化粧品": "cosmetics",
+        "電子產品": "electronics",
+        "化妝品": "cosmetics"
+    }
+
+    def _serialize_datetime(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return obj
+
+    def _process_product(self, product: dict) -> dict:
+        processed = {}
+        for key, value in product.items():
+            if isinstance(value, datetime):
+                processed[key] = self._serialize_datetime(value)
+            elif isinstance(value, dict):
+                processed[key] = self._process_product(value)
+            else:
+                processed[key] = value
+        return processed
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        category = tracker.get_slot("product_category")
+        price_range = tracker.get_slot("price_range")
+        language = tracker.get_slot("user_language") or "en"
+
+        try:
+            db_client = MongoDBClient()
+            products_collection = db_client.database["products"]
+
+            min_price, max_price = self._parse_price_range(price_range)
+
+            category_en = self.CATEGORY_MAPPING.get(category, category.lower())
+            
+            query = {
+                "category": category_en,  
+                "price": {
+                    "$gte": min_price,
+                    "$lte": max_price if max_price != float('inf') else 1000000
+                }
+            }
+
+            # 添加调试日志
+            logger.info(f"Original category: {category}")
+            logger.info(f"Mapped category: {category_en}")
+            logger.info(f"Searching with query: {query}")
+            logger.info(f"Price range: {min_price}-{max_price}")
+
+            # 执行查询
+            recommended_products = list(products_collection.find(
+                query,
+                {"_id": 0}
+            ).sort("rating", -1).limit(3))
+
+            # 添加结果日志
+            logger.info(f"Found {len(recommended_products)} products")
+
+            # 处理查询结果
+            processed_products = [self._process_product(product) for product in recommended_products]
+
+            if not processed_products:
+                response_messages = {
+                    "en": f"Sorry, no products found in category '{category}' within your price range.",
+                    "ja": f"申し訳ありません。{category}カテゴリーで指定価格範囲内の商品が見つかりませんでした。",
+                    "zh-cn": f"抱歉，在{category}类别中没有找到符合您价格范围的商品。",
+                    "zh-tw": f"抱歉，在{category}類別中沒有找到符合您價格範圍的商品。"
+                }
+                dispatcher.utter_message(text=response_messages.get(language, response_messages["en"]))
+                return []
+
+            # 根据语言选择商品名称
+            name_field = "name" if language == "en" else f"name_{language.replace('-', '')}"
+            
+            response_messages = {
+                "en": "Here are some recommended products for you:",
+                "ja": "おすすめの商品をご紹介します：",
+                "zh-cn": "以下是为您推荐的商品：",
+                "zh-tw": "以下是為您推薦的商品："
+            }
+
+            message = response_messages.get(language, response_messages["en"])
+            
+            # 构建推荐商品的展示消息
+            for product in processed_products:
+                product_name = product.get(name_field, product["name"])
+                message += (
+                    f"\n• {product_name}\n"
+                    f"  💰 TWD {product['price']}\n"  # 使用 TWD
+                    f"  ⭐ {product['rating']}\n"
+                    f"  🔗 {product['image_url']}"
+                )
+
+            dispatcher.utter_message(text=message)
+            return [SlotSet("recommended_products", processed_products)]
+
+        except Exception as e:
+            logger.error(f"Error recommending products: {str(e)}")
+            error_messages = {
+                "en": "Sorry, there was an error while fetching product recommendations.",
+                "ja": "商品のレコメンデーション取得中にエラーが発生しました。",
+                "zh-cn": "抱歉，获取商品推荐时发生错误。",
+                "zh-tw": "抱歉，獲取商品推薦時發生錯誤。"
+            }
+            dispatcher.utter_message(text=error_messages.get(language, error_messages["en"]))
+            return []
+
+    def _parse_price_range(self, price_range: str) -> Tuple[float, float]:
+        if not price_range:
+            return 0, float('inf')
+            
+        # 移除所有空格和货币单位
+        price_range = price_range.lower().replace(" ", "").replace("元", "").replace("¥", "").replace("twd", "").replace("nt$", "")
+        
+        try:
+            if "以下" in price_range or "under" in price_range:
+                max_price = float(re.findall(r'\d+', price_range)[0])
+                return 0, max_price
+            elif "-" in price_range or "到" in price_range:
+                prices = re.findall(r'\d+', price_range)
+                return float(prices[0]), float(prices[1])
+            elif "以上" in price_range or "over" in price_range:
+                min_price = float(re.findall(r'\d+', price_range)[0])
+                return min_price, float('inf')
+            else:
+                price = float(re.findall(r'\d+', price_range)[0])
+                return price * 0.8, price * 1.2
+        except Exception as e:
+            logger.error(f"Error parsing price range '{price_range}': {str(e)}")
+            return 0, float('inf')
+
+class ActionShowProductDetails(Action):
+    def name(self) -> Text:
+        return "action_show_product_details"  # 添加这个方法
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        product_id = tracker.get_slot("product_id")
+        language = tracker.get_slot("user_language") or "en"
+        
+        try:
+            db_client = MongoDBClient()
+            products_collection = db_client.database["products"]
+
+            product = products_collection.find_one(
+                {"id": product_id},
+                {"_id": 0}
+            )
+
+            if not product:
+                response_messages = {
+                    "en": "Sorry, product not found.",
+                    "ja": "申し訳ありません。商品が見つかりませんでした。",
+                    "zh-cn": "抱歉，未找到该商品。",
+                    "zh-tw": "抱歉，未找到該商品。"
+                }
+                dispatcher.utter_message(text=response_messages.get(language, response_messages["en"]))
+                return []
+
+            name_field = "name" if language == "en" else f"name_{language.replace('-', '')}"
+            product_name = product.get(name_field, product["name"])
+            product_description = product["description"].get(language.split('-')[0], product["description"]["en"])
+            
+            response_messages = {
+                "en": "Here are the product details:",
+                "ja": "商品の詳細情報：",
+                "zh-cn": "商品详细信息：",
+                "zh-tw": "商品詳細信息："
+            }
+
+            message = (
+                f"{response_messages.get(language, response_messages['en'])}\n\n"
+                f"📦 {product_name}\n"
+                f"💰 {product['currency']} {product['price']}\n"
+                f"⭐ {product['rating']}\n"
+                f"📝 {product_description}\n"
+                f"🏷️ {', '.join(product['tags'])}\n"
+                f"📊 Stock: {product['stock']}\n"
+                f"🔗 {product['image_url']}"
+            )
+            
+            dispatcher.utter_message(text=message)
+            return []
+
+        except Exception as e:
+            logger.error(f"Error showing product details: {str(e)}")
+            error_messages = {
+                "en": "Sorry, there was an error while fetching product details.",
+                "ja": "商品詳細の取得中にエラーが発生しました。",
+                "zh-cn": "抱歉，获取商品详情时发生错误。",
+                "zh-tw": "抱歉，獲取商品詳情時發生錯誤。"
+            }
+            dispatcher.utter_message(text=error_messages.get(language, error_messages["en"]))
+            return []
+
+class ActionProcessPurchase(Action):
+    def name(self) -> Text:
+        return "action_process_purchase"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        product_id = tracker.get_slot("product_id")
+        user_email = tracker.get_slot("user_email")
+        language = tracker.get_slot("user_language") or "en"
+        
+        # 处理购买请求
+        success = self._process_purchase(product_id, user_email)
+        
+        response_messages = {
+            "en": {
+                "success": "Your purchase has been processed successfully! We'll send the details to your email.",
+                "failure": "Sorry, there was an error processing your purchase. Please try again later."
+            },
+            "ja": {
+                "success": "ご購入が正常に処理されました！詳細はメールでお送りします。",
+                "failure": "申し訳ありません。購入処理中にエラーが発生しました。後でもう一度お試しください。"
+            },
+            "zh-cn": {
+                "success": "您的购买请求已成功处理！我们会将详细信息发送到您的邮箱。",
+                "failure": "抱歉，处理您的购买请求时出现错误。请稍后重试。"
+            },
+            "zh-tw": {
+                "success": "您的購買請求已成功處理！我們會將詳細信息發送到您的郵箱。",
+                "failure": "抱歉，處理您的購買請求時出現錯誤。請稍後重試。"
+            }
+        }
+
+        message = response_messages.get(language, response_messages["en"])
+        message = message["success"] if success else message["failure"]
+        
+        dispatcher.utter_message(text=message)
+        return []
+
+    def _process_purchase(self, product_id: str, user_email: str) -> bool:
+        # 实现实际的购买处理逻辑
+        return True

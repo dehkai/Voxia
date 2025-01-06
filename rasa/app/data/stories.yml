@@ -138,7 +138,6 @@ stories:
     - action: action_mark_hotel_search_complete
     - slot_was_set:
         - hotel_search_completed: true
-    - action: action_listen
     # Save travel request
     - intent: save_travel_request
     - action: action_generate_travel_request
@@ -356,3 +355,19 @@ stories:
     - intent: join_membership
     - action: action_detect_language
     - action: utter_join_membership
+
+  - story: product recommendation path
+    steps:
+    - intent: request_product_recommendation
+    - action: action_detect_language
+    - action: utter_ask_product_category
+    - intent: provide_product_category
+      entities:
+      - product_category: "cosmetics"
+    - action: utter_ask_price_range
+    - intent: inform
+      entities:
+      - price: "500"
+    - action: action_recommend_products
+    - intent: purchase_product
+    - action: action_process_purchase

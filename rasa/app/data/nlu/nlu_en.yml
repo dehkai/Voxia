@@ -441,4 +441,43 @@ nlu:
       - What are the steps to become a member?
       - Do I need to provide an email to join membership?
       
+  - intent: request_product_recommendation
+    examples: |
+      - Can you recommend some products?
+      - I'm looking for product recommendations
+      - What products do you suggest?
+      - Show me some popular items
+      - What's trending now?
+      - I need help finding products
+
+  - intent: provide_product_category
+    examples: |
+      - I'm looking for [cosmetics](product_category)
+      - Show me [electronics](product_category)
+      - I want to see [fashion](product_category) items
+      - Do you have any [beauty](product_category) products?
+      - [Home appliances](product_category)
+      - [Toys](product_category)
+
+  - intent: purchase_product
+    examples: |
+      - I want to buy this product
+      - How can I purchase this item?
+      - I'd like to order this
+      - Add this to my cart
+      - Buy now
+      - Purchase this item
+
+  - intent: inform
+    examples: |
+      - under NT$[1500](price)
+      - over NT$[3000](price)
+      - between NT$[1500](price) and NT$[3000](price)
+      - NT$[1500](price)-NT$[3000](price)
+      - less than NT$[1500](price)
+      - more than NT$[3000](price)
+      - around NT$[1500](price)
+      - about NT$[3000](price)
+      - [1500](price) TWD
+      - [3000](price) TWD
 
