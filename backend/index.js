@@ -5,6 +5,8 @@ const rateLimit = require('express-rate-limit');
 const { userRoutes } = require('./modules/user/userModule');
 const { chatbotRoutes } = require('./modules/chatbot/chatbotModule');
 const { emailRoutes } = require('./modules/email/emailModule');
+const { dashboardRoutes } = require('./modules/admin/adminModule'); 
+
 require('dotenv').config();
 
 const app = express();
@@ -45,6 +47,7 @@ mongoose.connect(`${process.env.MONGODB_ATLAS_URI}`, {
 app.use('/api/auth', userRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Rate limiter configuration
 const limiter = rateLimit({
