@@ -13,6 +13,7 @@ const NavbarBreadcrumbs = () => {
     'travel-requests-list': 'Dashboard > Travel Requests',
     'employee-details': 'Dashboard > Employee Details',
     'travel-reports': 'Dashboard > Travel Reports',
+    'user_profile': 'Profile',
   };
 
   // Get breadcrumb items based on the current route

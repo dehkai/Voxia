@@ -47,10 +47,6 @@ const OptionsMenu = React.memo(() => {
 
   const menuItems = React.useMemo(() => [
     { label: 'Profile', onClick: handleProfile },
-    { label: 'My account', onClick: handleClose },
-    { type: 'divider' },
-    { label: 'Add another account', onClick: handleClose },
-    { label: 'Settings', onClick: handleClose },
     { type: 'divider' },
     { 
       label: 'Logout',
@@ -58,9 +54,10 @@ const OptionsMenu = React.memo(() => {
       icon: <LogoutRoundedIcon fontSize="small" />,
       sx: {
         [`& .${listItemIconClasses.root}`]: {
-          ml: 'auto',
-          minWidth: 0,
-        },
+                  ml: 'auto',  
+                  minWidth: 0,
+                  marginLeft: '20px',
+                },
       }
     }
   ], [handleClose, handleLogout]);

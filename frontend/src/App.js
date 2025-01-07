@@ -91,6 +91,9 @@ function App() {
             }
           />
 
+          {/* User Profile Route */}
+          <Route path="/user_profile" element={<UserProfile />} />
+
           {/* Forgot Password Route */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
@@ -114,10 +117,8 @@ function App() {
 
           {/* Root layout for all other routes */}
           <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>
-            <Route path="admin_dashboard" element={<AdminDashboard />} />
-            <Route path="employee_dashboard" element={<EmployeeDashboard />} />
             <Route path="signin" element={<SignIn />} />
-            <Route path="user_profile" element={<UserProfile />} />
+            
           </Route>
         </Routes>
       </Router>
