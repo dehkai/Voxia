@@ -3,3 +3,6 @@ pymongo==4.3.3
 PyYAML==6.0.2
 python-dotenv==1.0.1
 requests==2.31.0
+transformers==4.47.1
+spacy_fastlang==2.1.0
+opencc-python-reimplemented==0.1.7
