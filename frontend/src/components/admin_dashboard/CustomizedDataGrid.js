@@ -7,7 +7,7 @@ export default function CustomizedDataGrid() {
 
   // Define the columns for DataGrid
   const columns = [
-    { field: 'id', headerName: 'ID', width: 100 },  // Set flex property for auto width
+    { field: 'id', headerName: 'Request ID', width: 100 },  // Set flex property for auto width
     { field: 'request_number', headerName: 'Request Number', flex: 1 },
     { field: 'total_cost', headerName: 'Total Cost', flex: 1 },
     { field: 'city', headerName: 'Destination', flex: 1 },
@@ -19,11 +19,11 @@ export default function CustomizedDataGrid() {
       renderCell: (params) => {
         // Determine the color based on the status
         let statusColor = '';
-        if (params.value === 'pending') {
+        if (params.value === 'PENDING') {
           statusColor = 'orange';  // Use orange for pending
-        } else if (params.value === 'approved') {
+        } else if (params.value === 'APPROVED') {
           statusColor = 'green';  // Use green for approved
-        } else if (params.value === 'rejected') {
+        } else if (params.value === 'REJECTED') {
           statusColor = 'red';  // Use red for rejected
         }
 
@@ -61,7 +61,7 @@ export default function CustomizedDataGrid() {
           total_cost: request.total_cost,
           city: request.flight_details.destination.city,
           nights: request.hotel_details.nights,
-          status: request.status,
+          status: request.status.toUpperCase(),
         }));
 
         console.log("Formatted Rows:", formattedRows);  // Log the formatted rows
