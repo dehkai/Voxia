@@ -1,4 +1,7 @@
 const userReportTemplate = (data) => {
+
+  const currentDate = new Date();
+  const formattedDate = currentDate.toISOString().split('T')[0];
     return `
 <!DOCTYPE html>
 <html lang="en">

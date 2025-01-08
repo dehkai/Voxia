@@ -187,42 +187,6 @@ class ActionSaveTravelRequest(Action):
                 )
                 return []
 
-            # Create the final travel request document
-            travel_request = {
-                "request_number": self._generate_request_number(),
-                "user_id": None,  # Will be set after user lookup
-                "user_email": travel_request_preview.get("user_email"),
-                "status": "pending",
-                "trip_type": travel_request_preview["flight_details"]["trip_type"],
-                "total_cost": travel_request_preview["total_cost"],
-                "flight_details": {
-                    "trip_type": travel_request_preview["flight_details"]["trip_type"],
-                    "origin": travel_request_preview["flight_details"]["origin"],
-                    "destination": travel_request_preview["flight_details"]["destination"],
-                    "outbound_flight": travel_request_preview["flight_details"]["outbound_flight"],
-                },
-                "hotel_details": travel_request_preview["hotel_details"],
-                "approval": {
-                    "status": "pending",
-                },
-                "timestamps": {
-                    "created_at": datetime.now(tz),
-                    "updated_at": datetime.now(tz)
-                },
-                "documents": [],
-                "notes": []
-            }
-
-            # Add return flight details if it's a round trip
-            if travel_request_preview["flight_details"]["trip_type"] == "round":
-                travel_request["flight_details"]["return_flight"] = (
-                    travel_request_preview["flight_details"]["return_flight"]
-                )
-
-            # Save to MongoDB
-            db_client = MongoDBClient()
-            result = db_client.database["travel_requests"].insert_one(travel_request)
-
             # generate pdf and save in mongoDb
             token = tracker.get_slot("auth_token")
             # Define the URL for the backend PDF generation endpoint
@@ -243,6 +207,45 @@ class ActionSaveTravelRequest(Action):
                 
                 response_data = response.json()
                 file_id = response_data.get("fileId")
+
+                # Create the final travel request document
+                travel_request = {
+                    "request_number": self._generate_request_number(),
+                    "user_id": None,  # Will be set after user lookup
+                    "user_email": travel_request_preview.get("user_email"),
+                    "status": "pending",
+                    "trip_type": travel_request_preview["flight_details"]["trip_type"],
+                    "total_cost": travel_request_preview["total_cost"],
+                    "flight_details": {
+                        "trip_type": travel_request_preview["flight_details"]["trip_type"],
+                        "origin": travel_request_preview["flight_details"]["origin"],
+                        "destination": travel_request_preview["flight_details"]["destination"],
+                        "outbound_flight": travel_request_preview["flight_details"]["outbound_flight"],
+                    },
+                    "hotel_details": travel_request_preview["hotel_details"],
+                    "approval": {
+                        "status": "pending",
+                    },
+                    "timestamps": {
+                        "created_at": datetime.now(tz),
+                        "updated_at": datetime.now(tz)
+                    },
+                    "documents": [],
+                    "notes": [],
+                    "files_id": file_id
+                }
+
+                # Add return flight details if it's a round trip
+                if travel_request_preview["flight_details"]["trip_type"] == "round":
+                    travel_request["flight_details"]["return_flight"] = (
+                        travel_request_preview["flight_details"]["return_flight"]
+                    )
+
+                # Save to MongoDB
+                db_client = MongoDBClient()
+                result = db_client.database["travel_requests"].insert_one(travel_request)
+
+
             # Send email with pdf to admin
                 sendToAdmin = {
                 "to": "tancheesen123@hotmail.com",
@@ -1634,13 +1637,14 @@ class ActionGenerateTravelRequest(Action):
                 f"💰 Total Trip Cost: RM {total_cost:.2f}\n\n"
                 f"Would you like to confirm and save this travel request?"
             )
-            
+            current_date = datetime.now()
+            formatted_date = current_date.strftime("%Y-%m-%d")
             # Sample data to send to the PDF generation API
             data = {
                 "basicInfo": {
                     "username": tracker.get_slot("user_email"),
                     "email": tracker.get_slot("user_email"),
-                    "current_date": "TESTING!!!!!",
+                    "current_date": formatted_date,
                     "department": "HR Department",
                     "employeeId": "1234567",
                     "phoneNum": "01743268489",
