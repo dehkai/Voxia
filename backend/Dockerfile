@@ -1,7 +1,6 @@
-# Use a node base image
 FROM node:21
 
-# Create a non-root user
+# Create a non-root user for Puppeteer
 RUN groupadd -r puppeteer && useradd -r -g puppeteer -G audio,video puppeteer \
     && mkdir -p /home/puppeteer/Downloads \
     && chown -R puppeteer:puppeteer /home/puppeteer
@@ -32,19 +31,25 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the package.json and package-lock.json
+# Set Puppeteer cache directory to /home/puppeteer/.cache
+ENV PUPPETEER_CACHE_DIR=/home/puppeteer/.cache
+
+# Install Chromium for Puppeteer
+RUN npx puppeteer browsers install chrome
+
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies, including devDependencies
-RUN npm install
+# Install dependencies (including devDependencies)
+RUN npm install --legacy-peer-deps
 
-# Copy the rest of your application files
+# Copy the rest of the application files
 COPY . .
 
-# Change to non-root user
+# Change to the non-root user
 USER puppeteer
 
-# Expose the port
+# Expose the port the application will run on
 EXPOSE 5000
 
 # Use nodemon for development to watch for file changes
