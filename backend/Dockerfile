@@ -1,6 +1,11 @@
 # Use a node base image
 FROM node:21
 
+# Create a non-root user
+RUN groupadd -r puppeteer && useradd -r -g puppeteer -G audio,video puppeteer \
+    && mkdir -p /home/puppeteer/Downloads \
+    && chown -R puppeteer:puppeteer /home/puppeteer
+
 # Set the working directory
 WORKDIR /app
 
@@ -35,6 +40,9 @@ RUN npm install
 
 # Copy the rest of your application files
 COPY . .
+
+# Change to non-root user
+USER puppeteer
 
 # Expose the port
 EXPOSE 5000
