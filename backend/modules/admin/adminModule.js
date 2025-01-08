@@ -20,6 +20,9 @@ router.get('/employees', DashboardController.getAllEmployees);
 // Route for fetching accepted travel requests
 router.get('/accepted-travel-requests', DashboardController.getAcceptedTravelRequests);
 
+// New route for updating travel request status (PUT method)
+router.put('/travel-requests/:id/status', DashboardController.updateTravelRequestStatus);
+
 module.exports = {
     dashboardRoutes: router
 };

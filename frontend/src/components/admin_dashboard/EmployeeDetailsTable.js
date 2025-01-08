@@ -12,8 +12,8 @@ export default function EmployeeDetailsTable() {
     { field: 'email', headerName: 'Email', flex: 1 },
     { field: 'gender', headerName: 'Gender', flex: 1 },
     { field: 'jobTitle', headerName: 'Job Title', flex: 1 },
-    { field: 'cabinClass', headerName: 'Cabin Class', flex: 1 },
-    { field: 'hotelRating', headerName: 'Hotel Rating', flex: 1 },
+    { field: 'cabinClass', headerName: 'Preffered Cabin Class', flex: 1 },
+    { field: 'hotelRating', headerName: 'Preferred Hotel Rating', flex: 1 },
   ];
 
   // Fetch data from the API
