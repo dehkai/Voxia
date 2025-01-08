@@ -21,7 +21,7 @@ export default function EmployeeDetailsTable() {
     const fetchData = async () => {
       try {
         // Fetch travel requests data
-        const response = await fetch('http://localhost:5000/api/dashboard/employees');
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/employees`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch data');
