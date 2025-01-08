@@ -10,18 +10,11 @@ import Box from '@mui/material/Box';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
 import FlightTakeoff from '@mui/icons-material/FlightTakeoff';
 import HistoryIcon from '@mui/icons-material/History';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 
 const mainListItems = [
   { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/employee_dashboard' },
   { text: 'My Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests' },
   { text: 'My Travel History', icon: <HistoryIcon />, path: '/travel-history' },
-];
-
-const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
-  { text: 'About', icon: <InfoRoundedIcon /> },
 ];
 
 export default function MenuContent() {
@@ -60,20 +53,6 @@ export default function MenuContent() {
         ))}
       </List>
 
-      {/* Spacer to push secondary items to the bottom */}
-      <Box sx={{ flexGrow: 1 }} /> {/* This will take up remaining space */}
-
-      {/* Secondary menu items */}
-      <List dense>
-        {secondaryListItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
     </Stack>
   );
 }

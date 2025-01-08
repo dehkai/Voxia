@@ -6,7 +6,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import AppNavbar from '../components/admin_dashboard/AppNavbar';
 import Header from '../components/admin_dashboard/Header';
-import TravelReportsTable from '../components/admin_dashboard/EmployeeDetailsTable';
+import EmployeeDetailsTable from '../components/admin_dashboard/EmployeeDetailsTable';
 import SideMenu from '../components/admin_dashboard/SideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
@@ -70,7 +70,7 @@ const Dashboard = React.memo(() => {
             >
               Employees' Details
             </Typography>
-            <TravelReportsTable />
+            <EmployeeDetailsTable />
                         
           </Stack>
         </Box>

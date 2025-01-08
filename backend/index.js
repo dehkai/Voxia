@@ -5,6 +5,8 @@ const rateLimit = require('express-rate-limit');
 const { userRoutes } = require('./modules/user/userModule');
 const { chatbotRoutes } = require('./modules/chatbot/chatbotModule');
 const { emailRoutes } = require('./modules/email/emailModule');
+const { dashboardRoutes } = require('./modules/admin/adminModule'); 
+
 require('dotenv').config();
 
 const app = express();
@@ -13,7 +15,8 @@ const allowedOrigins = [
   'http://localhost:3000',   // React app local
   'http://localhost:5005',   // Rasa local
   'http://frontend:3000',    // React app in Docker
-  'http://rasa:5005',        // Rasa in Docker
+  'http://rasa:5005',
+  'https://rasaactions.voxia.my',
   'https://voxia.my',        // Voxia production 
 ];
 
@@ -45,6 +48,7 @@ mongoose.connect(`${process.env.MONGODB_ATLAS_URI}`, {
 app.use('/api/auth', userRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Rate limiter configuration
 const limiter = rateLimit({
@@ -72,6 +76,7 @@ const authLimiter = rateLimit({
 // Apply stricter rate limiting to authentication routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
+app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

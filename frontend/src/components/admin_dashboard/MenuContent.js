@@ -11,19 +11,12 @@ import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
 import FlightTakeoff from '@mui/icons-material/FlightTakeoff';
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 
 const mainListItems = [
   { text: 'Dashboard', icon: <AnalyticsRoundedIcon />, path: '/admin_dashboard' },
   { text: 'Employees', icon: <PeopleRoundedIcon />, path: '/employee-details' },
-  { text: 'Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests' },
+  { text: 'Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests-list' },
   { text: 'Reports', icon: <AssessmentIcon />, path: '/travel-reports'},
-];
-
-const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
-  { text: 'About', icon: <InfoRoundedIcon /> },
 ];
 
 export default function MenuContent() {
@@ -61,24 +54,7 @@ export default function MenuContent() {
           </ListItem>
         ))}
       </List>
-
-      {/* Spacer to push secondary items to the bottom */}
-      <Box sx={{ flexGrow: 1 }} /> {/* This will take up remaining space */}
-
-      {/* Secondary menu items */}
-      <List dense>
-        {secondaryListItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton
-              selected={location.pathname === item.path} // Highlight if current route matches
-              onClick={() => handleNavigation(item.path)} // Navigate on click
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+      
     </Stack>
   );
 }

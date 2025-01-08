@@ -14,45 +14,79 @@ import DetailsCard from './DetailsCard';
 import ReportsCard from './ReportsCard';
 import StatCard from './StatCard';
 
-const data = [
-  {
-    title: 'Number of Employees',
-    value: '30',
-    interval: 'All Time',
-    trend: 'up',
-    data: [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-      11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-      21, 22, 23, 24, 25, 26, 27, 28, 29, 30 
-    ] 
-  },
-  {
-    title: 'Number of Travel Requests',
-    value: '25',
-    interval: 'Overall',
-    trend: 'up',
-    data: [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-      11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
-    ]  },
-  {
-    title: 'Number of Pending Requests',
-    value: '15',
-    interval: 'Overall',
-    trend: 'up',
-    data: [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
-    ]  
-  },
-];
-
 export default function MainGrid() {
   const navigate = useNavigate(); // Initialize useNavigate hook for navigation
   const theme = useTheme(); // Access the theme
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Check if it's a small screen
 
+  const [employeeCount, setEmployeeCount] = React.useState('Loading...');
+  const [travelRequestCount, setTravelRequestCount] = React.useState('Loading...');
+  const [pendingRequestCount, setPendingRequestCount] = React.useState('Loading...');
+
+  // Fetch data from the backend when the component mounts
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch employee count
+        const employeeRes = await fetch('http://localhost:5000/api/dashboard/employee-count');
+        const employeeContentType = employeeRes.headers.get('content-type');
+        if (employeeContentType && employeeContentType.includes('application/json')) {
+          const employeeData = await employeeRes.json();
+          setEmployeeCount(employeeData.data.employeeCount);
+        } else {
+          // Handle non-JSON response (likely HTML error)
+          const text = await employeeRes.text();
+          console.error('Expected JSON, received:', text);
+        }
+  
+        // Fetch travel request count
+        const travelRequestRes = await fetch('http://localhost:5000/api/dashboard/travel-request-count');
+        const travelRequestContentType = travelRequestRes.headers.get('content-type');
+        if (travelRequestContentType && travelRequestContentType.includes('application/json')) {
+          const travelRequestData = await travelRequestRes.json();
+          setTravelRequestCount(travelRequestData.data.travelRequestCount);
+        } else {
+          const text = await travelRequestRes.text();
+          console.error('Expected JSON, received:', text);
+        }
+  
+        // Fetch pending request count
+        const pendingRequestRes = await fetch('http://localhost:5000/api/dashboard/pending-travel-request-count');
+        const pendingRequestContentType = pendingRequestRes.headers.get('content-type');
+        if (pendingRequestContentType && pendingRequestContentType.includes('application/json')) {
+          const pendingRequestData = await pendingRequestRes.json();
+          setPendingRequestCount(pendingRequestData.data.pendingRequestCount);
+        } else {
+          const text = await pendingRequestRes.text();
+          console.error('Expected JSON, received:', text);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+  
+    fetchData();
+  }, []); // Empty dependency array ensures this runs once when the component mounts
+  
+
+  // Create the data array dynamically
+  const data = [
+    {
+      title: 'Number of Employees:',
+      value: employeeCount,
+    },
+    {
+      title: 'Number of Travel Requests:',
+      value: travelRequestCount,
+    },
+    {
+      title: 'Number of Pending Requests:',
+      value: pendingRequestCount,
+    },
+  ];
+
   const handleNavigate = () => {
-    navigate('/travel-requests'); // Navigate to TravelRequestPage.js route
+    navigate('/travel-requests-list'); // Navigate to TravelRequestPage.js route
   };
 
   return (
@@ -60,12 +94,7 @@ export default function MainGrid() {
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
         Overview
       </Typography>
-      <Grid
-        container
-        spacing={2}
-        columns={12}
-        sx={{ mb: (theme) => theme.spacing(2) }}
-      >
+      <Grid container spacing={2} columns={12} sx={{ mb: (theme) => theme.spacing(2) }}>
         {data.map((card, index) => (
           <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
             <StatCard {...card} />
@@ -78,7 +107,7 @@ export default function MainGrid() {
 
       {/* View All Employees' Travel Request with Button */}
       <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
-      <FlightTakeoff sx={{ mr: 3 }} /> {/* Flight icon with margin-right */}
+        <FlightTakeoff sx={{ mr: 3 }} /> {/* Flight icon with margin-right */}
         <Typography component="h2" variant="h6" sx={{ mr: 3 }}> {/* Adjusted margin-right */}
           View Employees' Travel Request
         </Typography>
@@ -100,7 +129,7 @@ export default function MainGrid() {
         </Grid>
         <Grid size={{ xs: 12, lg: 3 }}>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
-            { <ReportsCard /> }
+            {<ReportsCard />}
           </Stack>
         </Grid>
       </Grid>

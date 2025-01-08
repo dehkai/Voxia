@@ -30,7 +30,7 @@ export default function TravelRequestReportsCard() {
         >
           View Travel Request Reports
         </Typography>
-        <Typography sx={{ color: 'text.secondary', mb: '50px' }}>
+        <Typography sx={{ color: 'text.secondary', mb: '100px' }}>
           Access reports on employee travel requests, including trip details and expenses.
         </Typography>
         <Button
