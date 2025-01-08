@@ -6,7 +6,6 @@ const TravelRequestSchema = new Schema({
   request_number: { type: String, required: true },  // Unique travel request number
   user_id: { type: Schema.Types.ObjectId, ref: 'User', default: null },  // Reference to user, can be null
   status: { type: String, required: true },  // Status of the request (e.g., 'pending', 'approved')
-  type: { type: String, required: true },  // Type of travel (e.g., 'business', 'personal')
   purpose: { type: String, default: '' },  // Purpose of travel
   total_cost: { type: Number, required: true },  // Total cost of travel
 
