@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y \
 ENV PUPPETEER_CACHE_DIR=/home/puppeteer/.cache
 
 # Install Chromium for Puppeteer
-RUN npx puppeteer browsers install chrome
+RUN npx puppeteer browsers install chrome --path=/home/puppeteer/.cache/puppeteer
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
@@ -45,6 +45,9 @@ RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application files
 COPY . .
+
+# Ensure the application directory is writable by the Puppeteer user
+RUN chown -R puppeteer:puppeteer /app
 
 # Change to the non-root user
 USER puppeteer
