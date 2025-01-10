@@ -15,7 +15,7 @@ export default function TravelRequestReportsCard() {
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleNavigate = () => {
-    navigate('/travel-history'); // Navigate to TravelRequestPage.js route
+    navigate('/upcoming-trips'); // Navigate to TravelRequestPage.js route
   };
 
   return (
@@ -28,10 +28,10 @@ export default function TravelRequestReportsCard() {
           gutterBottom
           sx={{ fontWeight: '600' }}
         >
-          View Your Travel History
+          Your Upcoming Trips
         </Typography>
         <Typography sx={{ color: 'text.secondary', mb: '50px' }}>
-        Review detailed information about your accepted or past travel request.
+        Don't forget, your upcoming trip is just around the corner—check all the details to ensure you're ready!
         </Typography>
         <Button
           variant="contained"
@@ -41,7 +41,7 @@ export default function TravelRequestReportsCard() {
           fullWidth={isSmallScreen} // Dynamically set fullWidth for small screens
           onClick={handleNavigate}
         >
-          View History
+          View Upcoming Trips
         </Button>
       </CardContent>
     </Card>

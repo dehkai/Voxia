@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import TravelRequestCard from './TravelRequestCard';
-import TravelHistoryCard from './TravelHistoryCard';
+import UpcomingTripsCard from './UpcomingTripsCard';
 import UseChatBotCard from './UseChatBotCard';
 import StatCard from './StatCard';
 
@@ -125,7 +125,7 @@ export default function MainGrid({ onChatbotClick }) {
       value: totalRequests,
     },
     {
-      title: 'Total Number of Accepted Travel Request',
+      title: 'Total Number of Approved Travel Request',
       value: totalHistory,
     },
   ];
@@ -152,7 +152,7 @@ export default function MainGrid({ onChatbotClick }) {
         </Grid>
         <Grid size={{ xs: 6, lg: 4 }}>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
-            <TravelHistoryCard />
+            <UpcomingTripsCard />
           </Stack>
         </Grid>
         <Grid size={{ xs: 6, lg: 4 }}>
