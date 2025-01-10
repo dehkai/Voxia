@@ -45,7 +45,7 @@ export default function CustomizedDataGrid() {
     const fetchData = async () => {
       try {
         // Fetch travel requests data
-        const response = await fetch('http://localhost:5000/api/dashboard/travel-requests');
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/travel-requests`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch data');

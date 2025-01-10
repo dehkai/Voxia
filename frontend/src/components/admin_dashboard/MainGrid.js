@@ -28,7 +28,7 @@ export default function MainGrid() {
     const fetchData = async () => {
       try {
         // Fetch employee count
-        const employeeRes = await fetch('http://localhost:5000/api/dashboard/employee-count');
+        const employeeRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/employee-count`);
         const employeeContentType = employeeRes.headers.get('content-type');
         if (employeeContentType && employeeContentType.includes('application/json')) {
           const employeeData = await employeeRes.json();
@@ -40,7 +40,7 @@ export default function MainGrid() {
         }
   
         // Fetch travel request count
-        const travelRequestRes = await fetch('http://localhost:5000/api/dashboard/travel-request-count');
+        const travelRequestRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/travel-request-count`);
         const travelRequestContentType = travelRequestRes.headers.get('content-type');
         if (travelRequestContentType && travelRequestContentType.includes('application/json')) {
           const travelRequestData = await travelRequestRes.json();
@@ -51,7 +51,7 @@ export default function MainGrid() {
         }
   
         // Fetch pending request count
-        const pendingRequestRes = await fetch('http://localhost:5000/api/dashboard/pending-travel-request-count');
+        const pendingRequestRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/pending-travel-request-count`);
         const pendingRequestContentType = pendingRequestRes.headers.get('content-type');
         if (pendingRequestContentType && pendingRequestContentType.includes('application/json')) {
           const pendingRequestData = await pendingRequestRes.json();
