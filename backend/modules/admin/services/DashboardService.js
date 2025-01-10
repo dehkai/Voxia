@@ -77,6 +77,55 @@ const updateTravelRequestStatus = async (id, status) => {
   }
 };
 
+// Service method to get the status of the latest travel request by user email (updated method)
+const getLatestTravelRequestStatusByUserEmail = async (user_email) => {
+  try {
+    // Fetch the latest travel request by user email, sorted by creation date
+    const latestTravelRequest = await TravelRequest.findOne({ user_email }).sort({ createdAt: -1 }); // Sorting by creation date in descending order
+
+    if (!latestTravelRequest) {
+      return null; // No travel request found for this user
+    }
+
+    return latestTravelRequest.status; // Return the status of the latest travel request
+  } catch (error) {
+    throw new Error('Error fetching latest travel request status');
+  }
+};
+
+// Service method to get the travel request count by user email
+const getTravelRequestCountByUser = async (userEmail) => {
+  try {
+    const count = await TravelRequest.countDocuments({ user_email: userEmail }); // Count travel requests for the user
+    return count;
+  } catch (error) {
+    throw new Error('Error fetching travel request count for user');
+  }
+};
+
+// Service method to get the count of accepted travel requests by user email
+const getAcceptedTravelRequestCountByUser = async (userEmail) => {
+  try {
+    const count = await TravelRequest.countDocuments({ 
+      user_email: userEmail, 
+      status: { $in: ['approved', 'APPROVED'] } 
+    });
+        return count;
+  } catch (error) {
+    throw new Error('Error fetching accepted travel request count for user');
+  }
+};
+
+// Service method to get all travel requests by user email
+const getAllTravelRequestsByUserEmail = async (userEmail) => {
+  try {
+    const travelRequests = await TravelRequest.find({ user_email: userEmail }); // Query travel requests by user email
+    return travelRequests;
+  } catch (error) {
+    throw new Error('Error fetching travel requests for the user');
+  }
+};
+
 module.exports = {
   getEmployeeCount,
   getTravelRequestCount,
@@ -84,5 +133,9 @@ module.exports = {
   getAllTravelRequests,
   getAllEmployees,
   getAcceptedTravelRequests,
-  updateTravelRequestStatus, // Export the new method
+  updateTravelRequestStatus,
+  getLatestTravelRequestStatusByUserEmail,
+  getTravelRequestCountByUser,
+  getAcceptedTravelRequestCountByUser,
+  getAllTravelRequestsByUserEmail,
 };

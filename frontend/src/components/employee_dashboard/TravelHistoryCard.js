@@ -31,7 +31,7 @@ export default function TravelRequestReportsCard() {
           View Your Travel History
         </Typography>
         <Typography sx={{ color: 'text.secondary', mb: '50px' }}>
-        Review detailed information about your past travel history and its outcomes.
+        Review detailed information about your accepted or past travel request.
         </Typography>
         <Button
           variant="contained"

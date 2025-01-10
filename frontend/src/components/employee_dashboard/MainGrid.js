@@ -3,84 +3,147 @@ import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useNavigate } from 'react-router-dom';
-import { useTheme } from '@mui/material/styles'; // Import to access theme
-import useMediaQuery from '@mui/material/useMediaQuery'; // Import to handle screen size changes
 import TravelRequestCard from './TravelRequestCard';
 import TravelHistoryCard from './TravelHistoryCard';
 import UseChatBotCard from './UseChatBotCard';
 import StatCard from './StatCard';
 
-const data = [
-  {
-    title: 'Latest Travel Request Status', // Updated title
-    value: 'Pending', // Example status; adjust as needed
-  },
-  {
-    title: 'Total Number of Travel Request', // Updated title
-    value: '0 Requests', // Example value; adjust as needed
-  },
-  {
-    title: 'Total Number of Travel History', // Updated title
-    value: '0 Trips', // Example value; adjust as needed
-  },
-];
-
-
 export default function MainGrid({ onChatbotClick }) {
-  const navigate = useNavigate(); // Initialize useNavigate hook for navigation
-  const theme = useTheme(); // Access the theme
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm')); // Check if it's a small screen
   const [employeeName, setEmployeeName] = React.useState(''); // State for employee name
+  const [latestTravelStatus, setLatestTravelStatus] = React.useState('Loading...');
+  const [totalRequests, setTotalRequests] = React.useState('Loading...');
+  const [totalHistory, setTotalHistory] = React.useState('Loading...');
+  const [employeeEmail, setEmployeeEmail] = React.useState(''); // State for employee email
+
+  // Function to determine the color based on the travel status
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return 'orange';  // Orange for pending
+      case 'APPROVED':
+        return 'green';   // Green for approved
+      case 'REJECTED':
+        return 'red';     // Red for rejected
+      default:
+        return 'black';   // Default black color for unknown status
+    }
+  };
 
   React.useEffect(() => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (token) {
-      fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, { // Replace with your backend endpoint
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setEmployeeName(data.user.username); // Update employee name
-        })
-        .catch((error) => {
-          console.error('Error fetching employee profile:', error);
-        });
-    }
-  }, []);
+    // Function to handle fetching profile and travel status
+    const fetchData = async () => {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
-  const handleNavigate = () => {
-    navigate('/travel-requests'); // Navigate to TravelRequestPage.js route
-  };
+      try {
+        // Fetch employee profile
+        const profileRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const profileContentType = profileRes.headers.get('content-type');
+        if (profileContentType && profileContentType.includes('application/json')) {
+          const profileData = await profileRes.json();
+          setEmployeeName(profileData.user.username);
+          setEmployeeEmail(profileData.user.email);
+        } else {
+          const text = await profileRes.text();
+          console.error('Expected JSON for profile, received:', text);
+        }
+
+        // Once email is set, fetch the latest travel request status
+        if (employeeEmail) {
+          const travelStatusRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/travel-requests/${employeeEmail}/latest-status`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          const travelStatusContentType = travelStatusRes.headers.get('content-type');
+          if (travelStatusContentType && travelStatusContentType.includes('application/json')) {
+            const travelStatusData = await travelStatusRes.json();
+            setLatestTravelStatus(travelStatusData.data.status.toUpperCase() || 'No Requests');
+          } else {
+            const text = await travelStatusRes.text();
+            console.error('Expected JSON for travel status, received:', text);
+          }
+        }
+
+        // Fetch total number of travel requests
+        const travelRequestRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/travel-request-count/${employeeEmail}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const travelRequestContentType = travelRequestRes.headers.get('content-type');
+        if (travelRequestContentType && travelRequestContentType.includes('application/json')) {
+          const travelRequestData = await travelRequestRes.json();
+          setTotalRequests(`${travelRequestData.data.travelRequestCount || 0} Requests`);
+        } else {
+          const text = await travelRequestRes.text();
+          console.error('Expected JSON for travel requests, received:', text);
+        }
+
+        // Fetch total number of travel history (trips)
+        const travelHistoryRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/accepted-travel-request-count/${employeeEmail}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const travelHistoryContentType = travelHistoryRes.headers.get('content-type');
+        if (travelHistoryContentType && travelHistoryContentType.includes('application/json')) {
+          const travelHistoryData = await travelHistoryRes.json();
+          setTotalHistory(`${travelHistoryData.data.acceptedRequestCount || 0} Trips`);
+        } else {
+          const text = await travelHistoryRes.text();
+          console.error('Expected JSON for travel history, received:', text);
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData(); // Call the fetchData function
+  }, [employeeEmail]); // Dependency on employeeEmail ensures this runs when the email is set
+
+  const data = [
+    {
+      title: 'Latest Travel Request Status',
+      value: latestTravelStatus,
+      color: getStatusColor(latestTravelStatus), // Pass the color based on status
+    },
+    {
+      title: 'Total Number of Travel Requests',
+      value: totalRequests,
+    },
+    {
+      title: 'Total Number of Accepted Travel Request',
+      value: totalHistory,
+    },
+  ];
 
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-        Welcome, {employeeName || 'Employee'} ! {/* Display employee name */}
+        Welcome, {employeeName || 'Employee'}! {/* Display employee name */}
       </Typography>
-      <Grid
-        container
-        spacing={2}
-        columns={12}
-        sx={{ mb: (theme) => theme.spacing(2) }}
-      >
+      <Grid container spacing={2} columns={12} sx={{ mb: (theme) => theme.spacing(2) }}>
         {data.map((card, index) => (
           <Grid key={index} size={{ xs: 12, sm: 6, lg: 4 }}>
-            <StatCard {...card} />
+            <StatCard title={card.title} value={card.value} color={card.color} /> {/* Pass color to StatCard */}
           </Grid>
         ))}
       </Grid>
 
       <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
-        {/* Optional content */}
       </Box>
 
       <Grid container spacing={2} columns={12}>
