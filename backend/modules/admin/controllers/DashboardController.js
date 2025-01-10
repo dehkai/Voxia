@@ -51,10 +51,11 @@ const getPendingTravelRequestCount = async (req, res) => {
   }
 };
 
-// Controller method to get all travel requests (not just the count)
+// Controller method to get all travel requests by user email
 const getAllTravelRequests = async (req, res) => {
+  const { userEmail } = req.params; // Assuming you pass userEmail in the URL
   try {
-    const travelRequests = await DashboardService.getAllTravelRequests();
+    const travelRequests = await DashboardService.getAllTravelRequests(userEmail); // Fetch by userEmail
     return res.status(200).json({
       success: true,
       message: 'Travel requests retrieved successfully',
@@ -122,6 +123,90 @@ const updateTravelRequestStatus = async (req, res) => {
   }
 };
 
+// Controller method to get the status of the latest travel request by user email (updated method)
+const getLatestTravelRequestStatusByUserEmail = async (req, res) => {
+  const { user_email } = req.params; // Fetch userEmail from the request parameters
+
+  try {
+    const latestTravelRequestStatus = await DashboardService.getLatestTravelRequestStatusByUserEmail(user_email);
+    if (!latestTravelRequestStatus) {
+      return res.status(200).json({
+        success: true,
+        message: `No travel requests found for user email ${user_email}`,
+        data: null,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Latest travel request status for user email ${user_email} retrieved successfully`,
+      data: { status: latestTravelRequestStatus },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Something went wrong',
+    });
+  }
+};
+
+// Controller method to get the travel request count for the current user
+const getTravelRequestCountByUser = async (req, res) => {
+  const { userEmail } = req.params; // Assuming you pass the current user's email as a parameter
+
+  try {
+    const travelRequestCount = await DashboardService.getTravelRequestCountByUser(userEmail); // Fetch the count based on user
+    return res.status(200).json({
+      success: true,
+      message: `Travel request count for user ${userEmail} retrieved successfully`,
+      data: { travelRequestCount },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Something went wrong',
+    });
+  }
+};
+
+// Controller method to get the accepted travel request count for the current user
+const getAcceptedTravelRequestCountByUser = async (req, res) => {
+  const { userEmail } = req.params; // Assuming you pass the current user's email as a parameter
+
+  try {
+    const acceptedRequestCount = await DashboardService.getAcceptedTravelRequestCountByUser(userEmail); // Fetch count based on user email
+    return res.status(200).json({
+      success: true,
+      message: `Accepted travel request count for user ${userEmail} retrieved successfully`,
+      data: { acceptedRequestCount },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Something went wrong',
+    });
+  }
+};
+
+// Controller method to get all travel requests for the current user
+const getAllTravelRequestsByCurrentUser = async (req, res) => {
+  const { userEmail } = req.params; // Assuming req.user contains the authenticated user's details
+  try {
+    const travelRequests = await DashboardService.getAllTravelRequestsByUserEmail(userEmail);
+    return res.status(200).json({
+      success: true,
+      message: 'Travel requests for the current user retrieved successfully',
+      data: { travelRequests },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Something went wrong',
+    });
+  }
+};
+
+
 module.exports = {
   getEmployeeCount,
   getTravelRequestCount,
@@ -129,5 +214,9 @@ module.exports = {
   getAllTravelRequests,
   getAllEmployees,
   getAcceptedTravelRequests,
-  updateTravelRequestStatus, // Export the new method
+  updateTravelRequestStatus,
+  getLatestTravelRequestStatusByUserEmail,
+  getTravelRequestCountByUser,
+  getAcceptedTravelRequestCountByUser,
+  getAllTravelRequestsByCurrentUser,
 };

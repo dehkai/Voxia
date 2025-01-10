@@ -11,7 +11,7 @@ const NavbarBreadcrumbs = () => {
   const breadcrumbNameMap = {
     'employee_dashboard': 'Dashboard',
     'travel-requests': 'Dashboard > My Travel Requests',
-    'travel-history': 'Dashboard > My Travel History',
+    'upcoming-trips': 'Dashboard > My Upcoming Trips',
   };
 
   // Get breadcrumb items based on the current route

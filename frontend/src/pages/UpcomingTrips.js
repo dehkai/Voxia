@@ -8,7 +8,7 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import AppNavbar from '../components/employee_dashboard/AppNavbar';
 import Header from '../components/employee_dashboard/Header';
 import Typography from '@mui/material/Typography';
-import TravelReportsTable from '../components/employee_dashboard/TravelReportsTable';
+import TravelReportsTable from '../components/employee_dashboard/UpcomingTripsTable';
 import SideMenu from '../components/employee_dashboard/SideMenu';
 import AppTheme from '../shared-theme/AppTheme';
 import { useNavigate } from 'react-router-dom';
@@ -78,7 +78,7 @@ const Dashboard = React.memo(() => {
                 alignSelf: 'flex-start', // Aligns the text to the left
               }}
             >
-              Your Travel History
+              Your Confirmed Upcoming Trips
             </Typography>
             <TravelReportsTable />
             

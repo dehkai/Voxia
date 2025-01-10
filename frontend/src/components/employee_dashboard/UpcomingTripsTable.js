@@ -27,13 +27,28 @@ export default function TravelRequestTable() {
     setSelectedRequest(null);
   };
 
+  // Helper function to format date and time
+  const formatDateTime = (datetime) => {
+    const date = new Date(datetime);
+    return date.toLocaleString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   // Define the columns for DataGrid
   const columns = [
     { field: 'count', headerName: 'No.', width: 80 },
-    { field: 'id', headerName: 'Request ID', width: 100 },
-    { field: 'user_email', headerName: 'Email', width: 200 },
-    { field: 'request_number', headerName: 'Request Number', minWidth: 150, flex: 1 },
-    { field: 'total_cost', headerName: 'Total Cost (RM)', minWidth: 100, flex: 1 },
+    { field: 'request_number', headerName: 'Request Number', minWidth: 200, flex: 1 },
+    { field: 'departure_datetime', headerName: 'Departure', minWidth: 150, flex: 1 },
+    { field: 'arrival_datetime', headerName: 'Arrival', minWidth: 150, flex: 1 },
+    { field: 'check_in', headerName: 'Check-In', minWidth: 150, flex: 1 },
+    { field: 'check_out', headerName: 'Check-Out', minWidth: 150, flex: 1 },
+
     {
       field: 'details',
       headerName: 'Details',
@@ -44,27 +59,7 @@ export default function TravelRequestTable() {
         </Button>
       ),
     },
-    {
-      field: 'status',
-      headerName: 'Status',
-      minWidth: 120,
-      renderCell: (params) => {
-        let statusColor = '';
-        if (params.value === 'PENDING') {
-          statusColor = 'orange';
-        } else if (params.value === 'APPROVED') {
-          statusColor = 'green';
-        } else if (params.value === 'REJECTED') {
-          statusColor = 'red';
-        }
-
-        return (
-          <div style={{ color: statusColor, fontWeight: 'bold' }}>
-            {params.value}
-          </div>
-        );
-      },
-    },
+    
   ];
 
   // First useEffect: Fetch employee profile and set email
@@ -117,44 +112,39 @@ export default function TravelRequestTable() {
         }
 
         const data = await response.json();
-        const formattedRows = data.data.travelRequests.map((request, index) => ({
-          id: index + 1,
-          _id: request._id,
-          user_email: request.user_email,
-          request_number: request.request_number,
-          total_cost: request.total_cost,
-          origin_city: request.flight_details.origin.city,
-          origin_airport_code: request.flight_details.origin.airport_code,
-          destination_city: request.flight_details.destination.city,
-          destination_airport_code: request.flight_details.destination.airport_code,
-          outbound_airline: request.flight_details.outbound_flight.airline,
-          outbound_flight_number: request.flight_details.outbound_flight.flight_number,
-          cabin_class: request.flight_details.outbound_flight.cabin_class,
-          departure_datetime: request.flight_details.outbound_flight.departure_datetime,
-          arrival_datetime: request.flight_details.outbound_flight.arrival_datetime,
-          flight_duration: request.flight_details.outbound_flight.duration,
-          flight_price: request.flight_details.outbound_flight.price,
-          hotel_name: request.hotel_details.hotel_name,
-          hotel_city: request.hotel_details.city,
-          room_type: request.hotel_details.room_type,
-          check_in: request.hotel_details.check_in,
-          check_out: request.hotel_details.check_out,
-          nights: request.hotel_details.nights,
-          price_per_night: request.hotel_details.price_per_night,
-          total_hotel_price: request.hotel_details.total_price,
-          rating: request.hotel_details.rating,
-          status: request.status.toUpperCase(),
-        }));
+        const formattedRows = data.data.travelRequests
+          .filter((request) => request.status.toUpperCase() === 'APPROVED') // Only include 'APPROVED' requests
+          .map((request, index) => ({
+            id: index + 1,
+            _id: request._id,
+            user_email: request.user_email,
+            request_number: request.request_number,
+            total_cost: request.total_cost,
+            origin_city: request.flight_details.origin.city,
+            origin_airport_code: request.flight_details.origin.airport_code,
+            destination_city: request.flight_details.destination.city,
+            destination_airport_code: request.flight_details.destination.airport_code,
+            outbound_airline: request.flight_details.outbound_flight.airline,
+            outbound_flight_number: request.flight_details.outbound_flight.flight_number,
+            cabin_class: request.flight_details.outbound_flight.cabin_class,
+            departure_datetime: formatDateTime(request.flight_details.outbound_flight.departure_datetime),
+            arrival_datetime: formatDateTime(request.flight_details.outbound_flight.arrival_datetime),
+            flight_duration: request.flight_details.outbound_flight.duration,
+            flight_price: request.flight_details.outbound_flight.price,
+            hotel_name: request.hotel_details.hotel_name,
+            hotel_city: request.hotel_details.city,
+            room_type: request.hotel_details.room_type,
+            check_in: formatDateTime(request.hotel_details.check_in),
+            check_out: formatDateTime(request.hotel_details.check_out),
+            nights: request.hotel_details.nights,
+            price_per_night: request.hotel_details.price_per_night,
+            total_hotel_price: request.hotel_details.total_price,
+            rating: request.hotel_details.rating,
+            status: request.status.toUpperCase(),
+          }));
 
-        // Sort by status (PENDING first, then APPROVED, then REJECTED)
-        const sortedRows = [
-          ...formattedRows.filter((row) => row.status === 'PENDING'),
-          ...formattedRows.filter((row) => row.status === 'APPROVED'),
-          ...formattedRows.filter((row) => row.status === 'REJECTED'),
-        ];
-
-        // Assign a count to each row based on the sorted order
-        const rowsWithCount = sortedRows.map((row, index) => ({
+        // Assign a count to each row based on the filtered order
+        const rowsWithCount = formattedRows.map((row, index) => ({
           ...row,
           count: index + 1,
         }));

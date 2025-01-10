@@ -14,7 +14,7 @@ import HistoryIcon from '@mui/icons-material/History';
 const mainListItems = [
   { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/employee_dashboard' },
   { text: 'My Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests' },
-  { text: 'My Travel History', icon: <HistoryIcon />, path: '/travel-history' },
+  { text: 'My Upcoming Trips', icon: <HistoryIcon />, path: '/upcoming-trips' },
 ];
 
 export default function MenuContent() {
