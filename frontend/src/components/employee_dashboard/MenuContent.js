@@ -1,38 +1,51 @@
 import * as React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom'; // For navigation and detecting active route
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded';
-import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded';
-import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
-import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
-import HelpRoundedIcon from '@mui/icons-material/HelpRounded';
+import FlightTakeoff from '@mui/icons-material/FlightTakeoff';
+import HistoryIcon from '@mui/icons-material/History';
 
 const mainListItems = [
-  { text: 'Home', icon: <HomeRoundedIcon /> },
-  { text: 'Analytics', icon: <AnalyticsRoundedIcon /> },
-  { text: 'Clients', icon: <PeopleRoundedIcon /> },
-  { text: 'Tasks', icon: <AssignmentRoundedIcon /> },
-];
-
-const secondaryListItems = [
-  { text: 'Settings', icon: <SettingsRoundedIcon /> },
-  { text: 'About', icon: <InfoRoundedIcon /> },
-  { text: 'Feedback', icon: <HelpRoundedIcon /> },
+  { text: 'Dashboard', icon: <HomeRoundedIcon />, path: '/employee_dashboard' },
+  { text: 'My Travel Requests', icon: <FlightTakeoff />, path: '/travel-requests' },
+  { text: 'My Upcoming Trips', icon: <HistoryIcon />, path: '/upcoming-trips' },
 ];
 
 export default function MenuContent() {
+  const navigate = useNavigate();
+  const location = useLocation(); // Detect the current path
+  
+    // Function to handle navigation
+    const handleNavigation = (path) => {
+      navigate(path);
+    };
+
   return (
-    <Stack sx={{ flexGrow: 1, p: 1, justifyContent: 'space-between' }}>
+    <Stack sx={{ flexGrow: 1, p: 1 }}>
+      {/* Company logo at the top */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 1, mb: 2 }}>
+        <Box
+          component="img"
+          alt="Company Logo"
+          src={require('../../assets/images/origtek-logo.png')}
+          sx={{ width: 80, height: 'auto' }}
+        />
+      </Box>
+
+      {/* Main menu items */}
       <List dense>
         {mainListItems.map((item, index) => (
           <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton selected={index === 0}>
+           <ListItemButton
+              selected={location.pathname === item.path} // Highlight if current route matches
+              onClick={() => handleNavigation(item.path)} // Navigate on click
+            >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
@@ -40,16 +53,6 @@ export default function MenuContent() {
         ))}
       </List>
 
-      <List dense>
-        {secondaryListItems.map((item, index) => (
-          <ListItem key={index} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton>
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
     </Stack>
   );
 }

@@ -3,91 +3,163 @@ import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Copyright from './internals/components/Copyright';
-import ChartUserByCountry from './ChartUserByCountry';
-import CustomizedTreeView from './CustomizedTreeView';
-import CustomizedDataGrid from './CustomizedDataGrid';
-import HighlightedCard from './HighlightedCard';
-import PageViewsBarChart from './PageViewsBarChart';
-import SessionsChart from './SessionsChart';
+import TravelRequestCard from './TravelRequestCard';
+import UpcomingTripsCard from './UpcomingTripsCard';
+import UseChatBotCard from './UseChatBotCard';
 import StatCard from './StatCard';
 
-const data = [
-  {
-    title: 'Users',
-    value: '14k',
-    interval: 'Last 30 days',
-    trend: 'up',
-    data: [
-      200, 24, 220, 260, 240, 380, 100, 240, 280, 240, 300, 340, 320, 360, 340, 380,
-      360, 400, 380, 420, 400, 640, 340, 460, 440, 480, 460, 600, 880, 920,
-    ],
-  },
-  {
-    title: 'Conversions',
-    value: '325',
-    interval: 'Last 30 days',
-    trend: 'down',
-    data: [
-      1640, 1250, 970, 1130, 1050, 900, 720, 1080, 900, 450, 920, 820, 840, 600, 820,
-      780, 800, 760, 380, 740, 660, 620, 840, 500, 520, 480, 400, 360, 300, 220,
-    ],
-  },
-  {
-    title: 'Event count',
-    value: '200k',
-    interval: 'Last 30 days',
-    trend: 'neutral',
-    data: [
-      500, 400, 510, 530, 520, 600, 530, 520, 510, 730, 520, 510, 530, 620, 510, 530,
-      520, 410, 530, 520, 610, 530, 520, 610, 530, 420, 510, 430, 520, 510,
-    ],
-  },
-];
+export default function MainGrid({ onChatbotClick }) {
+  const [employeeName, setEmployeeName] = React.useState(''); // State for employee name
+  const [latestTravelStatus, setLatestTravelStatus] = React.useState('Loading...');
+  const [totalRequests, setTotalRequests] = React.useState('Loading...');
+  const [totalHistory, setTotalHistory] = React.useState('Loading...');
+  const [employeeEmail, setEmployeeEmail] = React.useState(''); // State for employee email
 
-export default function MainGrid() {
+  // Function to determine the color based on the travel status
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return 'orange';  // Orange for pending
+      case 'APPROVED':
+        return 'green';   // Green for approved
+      case 'REJECTED':
+        return 'red';     // Red for rejected
+      default:
+        return 'black';   // Default black color for unknown status
+    }
+  };
+
+  React.useEffect(() => {
+    // Function to handle fetching profile and travel status
+    const fetchData = async () => {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+      try {
+        // Fetch employee profile
+        const profileRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const profileContentType = profileRes.headers.get('content-type');
+        if (profileContentType && profileContentType.includes('application/json')) {
+          const profileData = await profileRes.json();
+          setEmployeeName(profileData.user.username);
+          setEmployeeEmail(profileData.user.email);
+        } else {
+          const text = await profileRes.text();
+          console.error('Expected JSON for profile, received:', text);
+        }
+
+        // Once email is set, fetch the latest travel request status
+        if (employeeEmail) {
+          const travelStatusRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/travel-requests/${employeeEmail}/latest-status`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          const travelStatusContentType = travelStatusRes.headers.get('content-type');
+          if (travelStatusContentType && travelStatusContentType.includes('application/json')) {
+            const travelStatusData = await travelStatusRes.json();
+            setLatestTravelStatus(travelStatusData.data.status.toUpperCase() || 'No Requests');
+          } else {
+            const text = await travelStatusRes.text();
+            console.error('Expected JSON for travel status, received:', text);
+          }
+        }
+
+        // Fetch total number of travel requests
+        const travelRequestRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/travel-request-count/${employeeEmail}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const travelRequestContentType = travelRequestRes.headers.get('content-type');
+        if (travelRequestContentType && travelRequestContentType.includes('application/json')) {
+          const travelRequestData = await travelRequestRes.json();
+          setTotalRequests(`${travelRequestData.data.travelRequestCount || 0} Requests`);
+        } else {
+          const text = await travelRequestRes.text();
+          console.error('Expected JSON for travel requests, received:', text);
+        }
+
+        // Fetch total number of travel history (trips)
+        const travelHistoryRes = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/dashboard/accepted-travel-request-count/${employeeEmail}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const travelHistoryContentType = travelHistoryRes.headers.get('content-type');
+        if (travelHistoryContentType && travelHistoryContentType.includes('application/json')) {
+          const travelHistoryData = await travelHistoryRes.json();
+          setTotalHistory(`${travelHistoryData.data.acceptedRequestCount || 0} Trips`);
+        } else {
+          const text = await travelHistoryRes.text();
+          console.error('Expected JSON for travel history, received:', text);
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData(); // Call the fetchData function
+  }, [employeeEmail]); // Dependency on employeeEmail ensures this runs when the email is set
+
+  const data = [
+    {
+      title: 'Latest Travel Request Status',
+      value: latestTravelStatus,
+      color: getStatusColor(latestTravelStatus), // Pass the color based on status
+    },
+    {
+      title: 'Total Number of Travel Requests',
+      value: totalRequests,
+    },
+    {
+      title: 'Total Number of Approved Travel Request',
+      value: totalHistory,
+    },
+  ];
+
   return (
     <Box sx={{ width: '100%', maxWidth: { sm: '100%', md: '1700px' } }}>
-      {/* cards */}
       <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-        Overview
+        Welcome, {employeeName || 'Employee'}! {/* Display employee name */}
       </Typography>
-      <Grid
-        container
-        spacing={2}
-        columns={12}
-        sx={{ mb: (theme) => theme.spacing(2) }}
-      >
+      <Grid container spacing={2} columns={12} sx={{ mb: (theme) => theme.spacing(2) }}>
         {data.map((card, index) => (
-          <Grid key={index} size={{ xs: 12, sm: 6, lg: 3 }}>
-            <StatCard {...card} />
+          <Grid key={index} size={{ xs: 12, sm: 6, lg: 4 }}>
+            <StatCard title={card.title} value={card.value} color={card.color} /> {/* Pass color to StatCard */}
           </Grid>
         ))}
-        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-          <HighlightedCard />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <SessionsChart />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <PageViewsBarChart />
-        </Grid>
       </Grid>
-      <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
-        Details
-      </Typography>
+
+      <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+      </Box>
+
       <Grid container spacing={2} columns={12}>
-        <Grid size={{ xs: 12, lg: 9 }}>
-          <CustomizedDataGrid />
+        <Grid size={{ xs: 6, lg: 4 }}>
+          <TravelRequestCard />
         </Grid>
-        <Grid size={{ xs: 12, lg: 3 }}>
+        <Grid size={{ xs: 6, lg: 4 }}>
           <Stack gap={2} direction={{ xs: 'column', sm: 'row', lg: 'column' }}>
-            <CustomizedTreeView />
-            <ChartUserByCountry />
+            <UpcomingTripsCard />
           </Stack>
         </Grid>
+        <Grid size={{ xs: 6, lg: 4 }}>
+          {/* Pass the onChatbotClick prop to the UseChatBotCard */}
+          <UseChatBotCard onChatbotClick={onChatbotClick} />
+        </Grid>
       </Grid>
-      <Copyright sx={{ my: 4 }} />
     </Box>
   );
 }

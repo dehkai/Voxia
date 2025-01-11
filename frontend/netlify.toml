@@ -1,0 +1,38 @@
+[[redirects]]
+  from = "/static/*"
+  to = "/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.js"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.css"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/reset-password*"
+  to = "/index.html"
+  status = 200
+  force = true 
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true 
+
+[[redirects]]
+  from = "/employee_dashboard*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin_dashboard*"
+  to = "/index.html"
+  status = 200
+  force = true

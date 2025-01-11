@@ -3,7 +3,7 @@ from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from amadeus import Client, ResponseError
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 from rasa_sdk.forms import FormValidationAction
 from rasa_sdk.types import DomainDict
@@ -13,7 +13,12 @@ from pymongo import MongoClient
 from pymongo.database import Database
 from pymongo.collection import Collection
 import requests
-from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted
+from rasa_sdk.events import AllSlotsReset, Restarted, SlotSet, ActionExecuted, UserUtteranceReverted, FollowupAction
+import random
+import webbrowser
+from spacy_fastlang import LanguageDetector
+import spacy
+import opencc
 
 #add comment
 
@@ -23,6 +28,64 @@ load_dotenv(dotenv_path=env_path)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class ActionDetectLanguage(Action):
+    def name(self) -> str:
+        return "action_detect_language"
+
+    def is_traditional_chinese(self, text: str) -> bool:
+        """Detect if the text contains Traditional Chinese characters using OpenCC."""
+        try:
+            # Initialize OpenCC for Simplified to Traditional conversion
+            converter = opencc.OpenCC('s2t')  # Make sure this file exists
+            
+            # Convert the text from Simplified Chinese to Traditional Chinese
+            converted_text = converter.convert(text)
+            
+            # Log the original and converted text for debugging
+            logger.info(f"Original text: {text}")
+            logger.info(f"Converted text: {converted_text}")
+            
+            # If the original text is different from the converted text, it indicates Traditional Chinese characters
+            if text != converted_text:
+                logger.info("Text contains Traditional Chinese characters.")
+                return False  # Text contains Traditional Chinese characters
+            else:
+                logger.info("Text does not contain Traditional Chinese characters.")
+                return True  # Text does not contain Traditional Chinese characters
+        except Exception as e:
+            print(f"Error in OpenCC conversion: {e}")
+            return False
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+        # Initialize the spaCy model with the language detector
+        nlp = spacy.blank("en")  # Start with a blank English pipeline
+        language_detector = LanguageDetector()
+        nlp.add_pipe("language_detector", last=True)
+
+        # Get the user's message
+        user_message = tracker.latest_message.get('text')
+        if not user_message:
+            dispatcher.utter_message(text="No text provided to detect language.")
+            return []
+
+        # Detect language
+        doc = nlp(user_message)
+        detected_language = doc._.language # Correct method to detect language
+        # detected_language, _ = langid.classify(user_message)
+
+        # Check if the language is Chinese
+        if detected_language == "zh":
+            if self.is_traditional_chinese(user_message):
+                logger.info("change to zh-tw")
+                detected_language = "zh-tw"  # Traditional Chinese
+            else:
+                logger.info("change to zh-cn")
+                detected_language = "zh-cn"  # Simplified Chinese
+        return [SlotSet("user_language", detected_language)]
 
 class ActionResetHotelForm(Action):
     """Custom action to reset hotel-related slots before starting a new hotel search."""
@@ -55,7 +118,8 @@ class ActionResetHotelForm(Action):
                 "city",
                 "check_in",
                 "check_out",
-                "hotel_search_completed"
+                "hotel_search_completed",
+                "selected_hotel"
             ]
 
             # Create SlotSet events for each slot
@@ -63,6 +127,10 @@ class ActionResetHotelForm(Action):
 
             # Set hotel_search_completed to False
             reset_events.append(SlotSet("hotel_search_completed", False))
+
+            # Clear flight date slots to prevent interference
+            reset_events.append(SlotSet("departure_date", None))
+            reset_events.append(SlotSet("return_date", None))
 
             logger.info("Successfully reset hotel form slots")
             return reset_events
@@ -72,9 +140,34 @@ class ActionResetHotelForm(Action):
             # In case of error, reset all slots as a fallback
             return [AllSlotsReset()]
 
+class ActionResetFlightForm(Action):
+    def name(self) -> Text:
+        return "action_reset_flight_form"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        logger.info("Action 'action_reset_flight_form' started.")
+        return [
+            SlotSet("origin", None),
+            SlotSet("destination", None),
+            SlotSet("departure_date", None),
+            SlotSet("return_date", None),
+            SlotSet("trip_type", None),
+            # Clear hotel date slots to prevent interference
+            SlotSet("check_in", None),
+            SlotSet("check_out", None)
+        ]
+
 class ActionSaveTravelRequest(Action):
     def name(self) -> Text:
         return "action_save_travel_request"
+
+    def _generate_request_number(self) -> str:
+        """Generate a unique request number"""
+        tz = timezone(timedelta(hours=8))  # UTC+8
+        timestamp = datetime.now(tz)
+        return f"TR-{timestamp.strftime('%Y%m')}-{random.randint(1000, 9999)}"
 
     async def run(
         self,
@@ -82,101 +175,141 @@ class ActionSaveTravelRequest(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
-        # Check if both flight and hotel searches are completed
-        flight_search_done = tracker.get_slot("flight_search_completed")
-        hotel_search_done = tracker.get_slot("hotel_search_completed")
-        
-        if not (flight_search_done and hotel_search_done):
-            missing_searches = []
-            if not flight_search_done:
-                missing_searches.append("flight")
-            if not hotel_search_done:
-                missing_searches.append("hotel")
-            
-            dispatcher.utter_message(
-                text=f"Please complete your {' and '.join(missing_searches)} search first."
-            )
-            return []
-
         try:
-            # Get MongoDB client
-            db_client = MongoDBClient()
-            travel_requests = db_client.database["travel_requests"]
-            
-            # Get user authentication details
-            auth_token = tracker.get_slot("auth_token")
-            user_email = tracker.get_slot("user_email")
-            
-            if not auth_token or not user_email:
-                dispatcher.utter_message(text="Please log in first to save your travel request.")
+            logger.info("Action 'action_save_travel_request' started.")
+            tz = timezone(timedelta(hours=8))
+            # Get the preview data
+            travel_request_preview = tracker.get_slot("travel_request_preview")
+            data = travel_request_preview.get("pdfData")
+            logger.info("this is pdfData", data)
+            if not travel_request_preview:
+                dispatcher.utter_message(
+                    text="No travel request preview found. Please start over."
+                )
                 return []
 
-            # Get flight details
-            flight_details = {
-                "trip_type": tracker.get_slot("trip_type"),
-                "origin": tracker.get_slot("origin"),
-                "destination": tracker.get_slot("destination"),
-                "departure_date": tracker.get_slot("departure_date"),
-                "return_date": tracker.get_slot("return_date"),
-                "cabin_class": tracker.get_slot("cabin_class")
-            }
-
-            # Get hotel details
-            hotel_details = {
-                "city": tracker.get_slot("city"),
-                "check_in": tracker.get_slot("check_in"),
-                "check_out": tracker.get_slot("check_out"),
-                "hotel_rating": tracker.get_slot("hotel_rating")
-            }
-
-            # Create travel request document
-            travel_request = {
-                "user_email": user_email,
-                "auth_token": auth_token,
-                "flight_details": flight_details,
-                "hotel_details": hotel_details,
-                "status": "pending",
-                "created_at": datetime.utcnow(),
-                "last_updated": datetime.utcnow()
-            }
-
-            # Insert into MongoDB
-            result = travel_requests.insert_one(travel_request)
+            # generate pdf and save in mongoDb
+            token = tracker.get_slot("auth_token")
+            # Define the URL for the backend PDF generation endpoint
+            backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+            backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-custom"
+            backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/download"
+            backend_url_sendEmail = f"{backend_url}/api/email/sendEmailWithPdf"
             
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+
+            # Make a request to the backend to generate the PDF
+            try:
+                response = requests.post(backend_url_pdf, json=data, headers=headers)
+                response.raise_for_status()
+                
+                response_data = response.json()
+                file_id = response_data.get("fileId")
+
+                # Create the final travel request document
+                travel_request = {
+                    "request_number": self._generate_request_number(),
+                    "user_id": None,  # Will be set after user lookup
+                    "user_email": travel_request_preview.get("user_email"),
+                    "status": "pending",
+                    "trip_type": travel_request_preview["flight_details"]["trip_type"],
+                    "total_cost": travel_request_preview["total_cost"],
+                    "flight_details": {
+                        "trip_type": travel_request_preview["flight_details"]["trip_type"],
+                        "origin": travel_request_preview["flight_details"]["origin"],
+                        "destination": travel_request_preview["flight_details"]["destination"],
+                        "outbound_flight": travel_request_preview["flight_details"]["outbound_flight"],
+                    },
+                    "hotel_details": travel_request_preview["hotel_details"],
+                    "approval": {
+                        "status": "pending",
+                    },
+                    "timestamps": {
+                        "created_at": datetime.now(tz),
+                        "updated_at": datetime.now(tz)
+                    },
+                    "documents": [],
+                    "notes": [],
+                    "files_id": file_id
+                }
+
+                # Add return flight details if it's a round trip
+                if travel_request_preview["flight_details"]["trip_type"] == "round":
+                    travel_request["flight_details"]["return_flight"] = (
+                        travel_request_preview["flight_details"]["return_flight"]
+                    )
+
+                # Save to MongoDB
+                db_client = MongoDBClient()
+                result = db_client.database["travel_requests"].insert_one(travel_request)
+
+
+            # Send email with pdf to admin
+                sendToAdmin = {
+                "to": "tancheesen123@hotmail.com",
+                "subject": "Your PDF Report",
+                "text": "Travel Request PDF",
+                "html": "Please find the attached PDF of your travel request.",
+                "fileId": file_id
+                }
+
+                response = requests.post(backend_url_sendEmail, json=sendToAdmin, headers=headers)
+                response.raise_for_status()
+
+            # Send email with pdf to current user
+                sendToUser = {
+                "to": travel_request_preview.get("user_email"),
+                "subject": "Your PDF Report",
+                "text": "Travel Request PDF",
+                "html": "Please find the attached PDF of your travel request.",
+                "fileId": file_id
+                }
+                
+                response = requests.post(backend_url_sendEmail, json=sendToUser, headers=headers)
+                response.raise_for_status()
+
+                # # Construct download link
+                download_link = f"{backend_url_download}/{file_id}"
+                dispatcher.utter_message(
+                    text=f"Your PDF has been generated successfully! Click the link to download: {download_link}",
+                )
+
+            except requests.exceptions.RequestException as e:
+                dispatcher.utter_message(text="Sorry, an error occurred while generating the PDF.")
+                print(f"Error generating PDF: {e}")
+
             if result.inserted_id:
-                # Format the confirmation message with details
+                # Create a more detailed confirmation message based on trip type
+                trip_type = travel_request["trip_type"]
+                total_cost = travel_request["total_cost"]
+                
                 confirmation_message = (
                     f"✅ Travel Request Saved Successfully!\n\n"
-                    f"📋 Request ID: {result.inserted_id}\n\n"
-                    f"Flight Details:\n"
-                    f"✈️ From: {flight_details['origin']} To: {flight_details['destination']}\n"
-                    f"📅 Departure: {flight_details['departure_date']}\n"
-                    f"🔄 Return: {flight_details['return_date'] if flight_details['return_date'] else 'N/A'}\n"
-                    f"💺 Cabin: {flight_details['cabin_class']}\n\n"
-                    f"Hotel Details:\n"
-                    f"🏨 City: {hotel_details['city']}\n"
-                    f"📅 Check-in: {hotel_details['check_in']}\n"
-                    f"📅 Check-out: {hotel_details['check_out']}\n"
-                    f"⭐ Rating: {hotel_details['hotel_rating']}"
+                    f"📋 Request Number: {travel_request['request_number']}\n"
+                    f"✈️ Trip Type: {trip_type.title()}\n"
+                    f"💰 Total Cost: RM {total_cost:.2f}\n"
+                    f"🔍 Status: Pending Approval\n\n"
+                    f"Your request has been submitted and is pending approval.\n"
+                    f"You will be notified once it's reviewed."
                 )
-                
+
                 dispatcher.utter_message(text=confirmation_message)
-                
-                # Reset the completion flags and return the request ID
+
+                # Clear the preview and reset completion flags
                 return [
                     SlotSet("travel_request_id", str(result.inserted_id)),
+                    SlotSet("travel_request_preview", None),
                     SlotSet("flight_search_completed", False),
                     SlotSet("hotel_search_completed", False)
                 ]
-            else:
-                dispatcher.utter_message(
-                    text="There was an issue saving your travel request. Please try again."
-                )
-                return []
 
         except Exception as e:
+            logger.error(f"Error saving travel request: {str(e)}")
             dispatcher.utter_message(
-                text=f"An error occurred while saving your travel request: {str(e)}"
+                text="Sorry, there was an error saving your travel request. Please try again."
             )
             return []
 
@@ -190,6 +323,31 @@ class ActionMarkFlightSearchComplete(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        # Check if flight is selected
+        selected_flight = tracker.get_slot("selected_flight")
+        if not selected_flight:
+            return []  # Don't mark as complete if no flight is selected
+            
+        # Check if hotel search is already completed
+        hotel_search_completed = tracker.get_slot("hotel_search_completed")
+        
+        if hotel_search_completed:
+            dispatcher.utter_message(
+                text="Great! Both flight and hotel selections are complete. Would you like to save your travel request?",
+                buttons=[
+                    {"title": "Yes, save it", "payload": "/save_travel_request"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
+        else:
+            dispatcher.utter_message(
+                text="Flight selection completed! Would you like to proceed with hotel search?",
+                buttons=[
+                    {"title": "Yes, search hotels", "payload": "/search_hotels"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
+        
         return [SlotSet("flight_search_completed", True)]
 
 class ActionMarkHotelSearchComplete(Action):
@@ -202,16 +360,34 @@ class ActionMarkHotelSearchComplete(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
-        # Check if flight search is also completed
-        if tracker.get_slot("flight_search_completed"):
+        logger.info("Action 'action_mark_hotel_search_complete' started.")
+        selected_hotel = tracker.get_slot("selected_hotel")
+        if not selected_hotel:
+            return []  
+            
+        events = [SlotSet("hotel_search_completed", True)]
+            
+        flight_search_completed = tracker.get_slot("flight_search_completed")
+        selected_flight = tracker.get_slot("selected_flight")
+        
+        if flight_search_completed and selected_flight:
             dispatcher.utter_message(
-                text="Great! Both flight and hotel searches are complete. Would you like to save your travel request?",
+                text="Great! Both flight and hotel selections are complete. Would you like to generate your travel request?",
                 buttons=[
-                    {"title": "Yes, save it", "payload": "/save_travel_request"},
+                    {"title": "Yes, please", "payload": "/save_travel_request"},
                     {"title": "No, thanks", "payload": "/deny"}
                 ]
             )
-        return [SlotSet("hotel_search_completed", True)]
+        else:
+            dispatcher.utter_message(
+                text="Hotel selection completed! Would you like to proceed with flight search?",
+                buttons=[
+                    {"title": "Yes, search flights", "payload": "/search_flights"},
+                    {"title": "No, thanks", "payload": "/deny"}
+                ]
+            )
+        
+        return events
 
 class ActionFetchUserPreferences(Action):
     def name(self) -> str:
@@ -220,7 +396,7 @@ class ActionFetchUserPreferences(Action):
     async def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: dict):
         # Fetch the token from the tracker
         token = tracker.get_slot("auth_token")
-        
+        logger.info("Action 'action_fetch_user_preferences' started.")
         if not token:
             dispatcher.utter_message(text="No valid token found. Please log in again.")
             return []
@@ -251,28 +427,6 @@ class ActionFetchUserPreferences(Action):
             return []
 
 
-# class ActionOfferRestart(Action):
-#     """Action to offer conversation restart after flight search"""
-    
-#     def name(self) -> Text:
-#         return "action_offer_restart"
-        
-#     async def run(
-#         self,
-#         dispatcher: CollectingDispatcher,
-#         tracker: Tracker,
-#         domain: Dict[Text, Any]
-#     ) -> List[Dict[Text, Any]]:
-#         # Offer restart with buttons
-#         dispatcher.utter_message(
-#             text="Would you like to start a new search?",
-#             buttons=[
-#                 {"title": "Yes, start new search", "payload": "/restart_conversation"},
-#                 {"title": "No, end chat", "payload": "/goodbye"}
-#             ]
-#         )
-#         return []
-
 class ActionRestartConversation(Action):
     """Action to handle conversation restart"""
     
@@ -285,6 +439,7 @@ class ActionRestartConversation(Action):
         tracker: Tracker,
         domain: Dict[Text, Any]
     ) -> List[Dict[Text, Any]]:
+        logger.info("Action 'action_restart_conversation' started.")
         # Clear all slots
         events = [AllSlotsReset()]
         
@@ -321,8 +476,12 @@ class MongoDBClient:
                     logger.error("MongoDB connection string not found in environment variables")
                     raise ValueError("MongoDB connection string not found in environment variables")
                 
-                # Initialize client
-                cls._instance.client = MongoClient(mongodb_uri)
+                # Initialize client with timezone aware settings
+                cls._instance.client = MongoClient(
+                    mongodb_uri,
+                    tz_aware=True,  # Enable timezone awareness
+                    tzinfo=timezone(timedelta(hours=8))  # Set UTC+8 timezone
+                )
                 cls._instance.db = cls._instance.client[db_name]
                 logger.info(f"Successfully connected to MongoDB database: {db_name}")
                 
@@ -381,19 +540,29 @@ class ActionSetTripType(Action):
         tracker: Tracker,
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
-        # Get the trip type from the intent name
-        if tracker.get_intent_of_latest_message() == "single_trip":
+        logger.info("Action 'action_set_trip_type' started.")
+        intent = tracker.latest_message.get('intent', {}).get('name')
+        
+        if intent == "single_trip":
             trip_type = "single"
-        else:
+        elif intent == "round_trip":
             trip_type = "round"
-            
-        return [SlotSet("trip_type", trip_type)]
+        else:
+            return []
+        
+        # Set the trip type and move to next slot
+        return [
+            SlotSet("trip_type", trip_type),
+            SlotSet("requested_slot", "origin")  # Move to asking for origin
+        ]
+
 class ActionSearchFlights(Action):
     def name(self) -> Text:
         return "action_search_flights"
         
     def validate_flight_params(self, origin: str, destination: str, departure_date: str, return_date: str = None, trip_type: str = "single", cabin_class: str = None) -> bool:
         """Validate flight search parameters"""
+        logger.info("Action 'action_search_flights' started.")
         if not all([origin, destination, departure_date]):
             return False
             
@@ -429,7 +598,7 @@ class ActionSearchFlights(Action):
         
         return ' '.join(formatted_duration)
 
-    def format_flight_details(self, offer: Dict[str, Any], carriers: Dict[str, str]) -> str:
+    def format_flight_details(self, offer: Dict[Text, Any], carriers: Dict[Text, str]) -> str:
         """Format flight offer details for display"""
         try:
             price = offer['price']['total']
@@ -500,8 +669,10 @@ class ActionSearchFlights(Action):
             
             if response.data:
                 carriers = response.result['dictionaries']['carriers']
-                return [self.format_flight_details(offer, carriers) for offer in response.data[:3]]
+                flight_details = [self.format_flight_details(offer, carriers) for offer in response.data[:3]]
+                return flight_details
             return []
+
         except Exception as e:
             logger.error(f"Error searching flights: {str(e)}")
             return []
@@ -540,40 +711,47 @@ class ActionSearchFlights(Action):
             outbound_details = await self.search_flights(amadeus, origin, destination, departure_date, cabin_class)
             
             if outbound_details:
-                # For single trip, just show outbound flights
                 if trip_type == "single":
-                    message = f"✈️ Outbound flights from {origin} to {destination}:\n\n"
-                    message += "\n\n".join(outbound_details)
-                    dispatcher.utter_message(text=message)
+                    dispatcher.utter_message(text="Here are your flight options:")
+                    
+                    # Create buttons for each flight option
+                    buttons = []
+                    for idx, flight in enumerate(outbound_details, 1):
+                        dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                        buttons.append({
+                            "title": f"Select Flight {idx}",
+                            "payload": f"/select_flight{{\"flight_number\": \"{idx-1}\"}}"
+                        })
+                    
+                    # Display selection buttons in a separate message
+                    dispatcher.utter_message(text="Please select your flight:", buttons=buttons)
+                    
                     return [
                         SlotSet("flights_found", True),
-                        ActionExecuted("action_offer_restart")
-                    ]                
+                        SlotSet("flight_options", outbound_details)
+                    ]
 
-                # For round trip, search and show both outbound and return flights
                 elif trip_type == "round" and return_date:
-                    # Search return flights
                     return_details = await self.search_flights(amadeus, destination, origin, return_date, cabin_class)
                     
                     if return_details:
-                        # First show outbound options
-                        message = f"✈️ Outbound Options ({departure_date}):\n\n"
-                        message += "\n\n".join(outbound_details)
-                        dispatcher.utter_message(text=message)
+                        # Show outbound options
+                        dispatcher.utter_message(text=f"✈️ Outbound Options ({departure_date}):")
+                        buttons = []
+                        for idx, flight in enumerate(outbound_details, 1):
+                            dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                            buttons.append({
+                                "title": f"Select Outbound Flight {idx}",
+                                "payload": f"/select_flight{{\"flight_number\": \"{idx-1}\"}}"
+                            })
                         
-                        # Then show return options
-                        message = f"\n🔄 Return Options ({return_date}):\n\n"
-                        message += "\n\n".join(return_details)
-                        dispatcher.utter_message(text=message)
+                        dispatcher.utter_message(text="Please select your outbound flight:", buttons=buttons)
                         
-                        # Display total combinations available
-                        total_combinations = len(outbound_details) * len(return_details)
-                        message = (f"\n📊 Total {total_combinations} combinations available. "
-                                 "Please let me know which outbound and return flights you prefer.")
-                        dispatcher.utter_message(text=message)
                         return [
                             SlotSet("flights_found", True),
-                            ActionExecuted("action_offer_restart")
+                            SlotSet("outbound_options", outbound_details),
+                            SlotSet("return_options", return_details),
+                            SlotSet("flight_options", outbound_details)  # Initially set to outbound options
                         ]
                     else:
                         dispatcher.utter_message(
@@ -581,7 +759,6 @@ class ActionSearchFlights(Action):
                         )
                         return [
                             SlotSet("flights_found", False),
-                            ActionExecuted("action_offer_restart")
                         ]
             else:
                 dispatcher.utter_message(
@@ -589,20 +766,17 @@ class ActionSearchFlights(Action):
                 )
                 return [
                     SlotSet("flights_found", False),
-                    ActionExecuted("action_offer_restart")
                 ]
                 
         except ResponseError as error:
             logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
             return [
                     SlotSet("flights_found", False),
-                    ActionExecuted("action_offer_restart")
                 ]
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return [
                     SlotSet("flights_found", False),
-                    ActionExecuted("action_offer_restart")
                 ]
 
     
@@ -613,6 +787,7 @@ class ActionSearchHotels(Action):
         return "action_search_hotels"
 
     def validate_hotel_params(self, city: str, check_in: str, check_out: str, hotel_rating: str) -> bool:
+        logger.info("Action 'action_search_hotels' started.")
         """Validate hotel search parameters"""
         if not all([city, check_in, check_out]):
             return False
@@ -624,7 +799,7 @@ class ActionSearchHotels(Action):
         except ValueError:
             return False
 
-    def get_hotels_by_city(self, amadeus: Client, city_code: str, hotel_rating: str) -> List[Dict[str, Any]]:
+    def get_hotels_by_city(self, amadeus: Client, city_code: str, hotel_rating: str) -> List[Dict[Text, Any]]:
         """
         Get list of hotels in a city using Amadeus API
 
@@ -656,7 +831,7 @@ class ActionSearchHotels(Action):
             logger.error(f"Unexpected error in get_hotels_by_city: {str(e)}")
             raise
 
-    def get_hotel_offers(self, amadeus: Client, hotel_ids: List[str], check_in: str, check_out: str) -> List[Dict[str, Any]]:
+    def get_hotel_offers(self, amadeus: Client, hotel_ids: List[str], check_in: str, check_out: str) -> List[Dict[Text, Any]]:
         """
         Get hotel offers for specified hotels
 
@@ -693,8 +868,8 @@ class ActionSearchHotels(Action):
 
         return valid_offers
 
-    def format_hotel_details(self, hotel: Dict[str, Any], rating: str) -> str:
-        """Format hotel offer details for display, with safeguards for list structures."""
+    def format_hotel_details(self, hotel: Dict[Text, Any], rating: str, currency_conversion: Dict[Text, Any] = None) -> str:
+        """Format hotel offer details for display, with currency conversion support."""
         try:
             offers = hotel.get('offers', [])
             if not offers or not isinstance(offers, list):
@@ -704,7 +879,20 @@ class ActionSearchHotels(Action):
             hotel_data = hotel.get('hotel', {})
 
             hotel_name = hotel_data.get('name', 'N/A')
-            price_total = offer.get('price', {}).get('total', 'N/A')
+            price_data = offer.get('price', {})
+            original_currency = price_data.get('currency', 'EUR')
+            price_total = price_data.get('total', 'N/A')
+
+            # Convert price if currency conversion data is available
+            if currency_conversion and price_total != 'N/A':
+                conversion_rate = currency_conversion.get(original_currency, {}).get('rate')
+                if conversion_rate:
+                    try:
+                        price_total = float(price_total) * float(conversion_rate)
+                        price_total = f"{price_total:.2f}"
+                    except ValueError:
+                        logger.error(f"Error converting price: {price_total} with rate {conversion_rate}")
+
             description_text = offer.get('room', {}).get('description', {}).get('text', 'N/A')[:100]
             check_in_date = offer.get('checkInDate', 'N/A')
             check_out_date = offer.get('checkOutDate', 'N/A')
@@ -755,21 +943,51 @@ class ActionSearchHotels(Action):
 
             if hotel_offers:
                 hotel_details = []
-                for hotel_offer in hotel_offers[:3]:
+                # Get currency conversion rates from the hotel_offers response
+                currency_conversion = amadeus.get(
+                    '/v3/shopping/hotel-offers',
+                    hotelIds=hotel_ids[0],  # Use first hotel to get conversion rates
+                    adults='1',
+                    checkInDate=check_in,
+                    checkOutDate=check_out,
+                    currency="MYR"
+                ).result.get('dictionaries', {}).get('currencyConversionLookupRates', {})
+                
+                for idx, hotel_offer in enumerate(hotel_offers[:3], 1):
                     hotel_id = hotel_offer['hotel']['hotelId']
                     hotel_info = hotel_info_map.get(hotel_id, {})
                     rating = hotel_ratings_map.get(hotel_id, 'N/A')
-                    formatted_details = self.format_hotel_details(hotel_offer, rating)
+                    formatted_details = self.format_hotel_details(
+                        hotel_offer, 
+                        rating,
+                        currency_conversion
+                    )
                     hotel_details.append(formatted_details)
 
+                # First display the instruction message
                 dispatcher.utter_message(
-                    text=(
-                        f"🏨 Found {len(hotel_offers)} available hotels in {city_code}.\n"
-                        f"Here are the top options:\n\n" + "\n\n".join(hotel_details)
-                    )
+                    text=f"🏨 Found {len(hotel_offers)} available hotels in {city_code}."
                 )
+
+                # Display each hotel option
+                buttons = []
+                for idx, hotel in enumerate(hotel_details, 1):
+                    dispatcher.utter_message(text=f"Option {idx}:\n{hotel}")
+                    buttons.append({
+                        "title": f"Select Hotel {idx}",
+                        "payload": f"/select_hotel{{\"hotel_number\": \"{idx-1}\"}}"
+                    })
+                
+                # Display selection buttons in a separate message
+                dispatcher.utter_message(text="Please select your hotel:", buttons=buttons)
+
+                return [
+                    SlotSet("hotel_options", hotel_details),
+                    SlotSet("hotel_search_completed", True)
+                ]
             else:
                 dispatcher.utter_message(text=f"Sorry, no available hotels found in {city_code} for your dates.")
+                return []
 
         except ResponseError as error:
             logger.error(f"Amadeus API error: [{error.response.status_code}] {error.response.body}")
@@ -784,6 +1002,21 @@ class ActionSearchHotels(Action):
 class ValidateFlightSearchForm(FormValidationAction):
     def name(self) -> Text:
         return "validate_flight_search_form"
+
+    async def validate_trip_type(
+        self,
+        slot_value: Any,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: DomainDict,
+    ) -> Dict[Text, Any]:
+        logger.info("Action 'validate_flight_search_form' started.")
+        intent = tracker.latest_message['intent'].get('name')
+        if intent == "single_trip":
+            return {"trip_type": "single"}
+        elif intent == "round_trip":
+            return {"trip_type": "round"}
+        return {"trip_type": None}
 
     def validate_origin(
         self,
@@ -841,22 +1074,29 @@ class ActionGeneratePDF(Action):
         return "action_generate_pdf"
 
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
+        logger.info("Action 'action_generate_pdf' started.")
         token = tracker.get_slot("auth_token")
         # Define the URL for the backend PDF generation endpoint
-        backend_url = "http://localhost:5000/api/chatbot/chatbots/generate-pdf"
+        backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+        backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-pdf"
         
         # Sample data to send to the PDF generation API
         data = {
             "text": "This is a sample text to include in the PDF."
         }
 
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
         # Make a request to the backend to generate the PDF
         try:
-            response = requests.post(backend_url, json=data)
+            response = requests.post(backend_url_pdf, json=data, headers=headers)
             response.raise_for_status()
 
             # Construct download link
-            download_link = f"{backend_url}/download"
+            download_link = f"{backend_url_pdf}/download"
             dispatcher.utter_message(text="Your PDF has been generated! Click the link to download: " + download_link)
 
         except requests.exceptions.RequestException as e:
@@ -894,26 +1134,49 @@ class ActionFetchAuthToken(Action):
         return "action_fetch_auth_token"
 
     def run(self, dispatcher: CollectingDispatcher, tracker, domain):
+        logger.info("Action 'action_fetch_auth_token' started.")
+        # First check if token already exists
+        existing_token = tracker.get_slot("auth_token")
+        existing_email = tracker.get_slot("user_email")
+        
+        if existing_token and existing_email:
+            logger.info(f"Token already exists for user: {existing_email}")
+            dispatcher.utter_message(text="You're already authenticated!")
+            return []
+            
         # Extract the provided email entity from user input
         email = next(tracker.get_latest_entity_values("email"), None)
+        
+        # Get backend URL from environment variable, with fallback
+        backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+        url = f"{backend_url}/api/auth/fetch-token"
+        
+        logger.info(f"Attempting to fetch token for email: {email} from URL: {url}")
         
         # Ensure email slot is set
         if email:
             # Call your backend API to get the token
-            url = "http://localhost:5000/api/auth/fetch-token"
             headers = {"Content-Type": "application/json"}
-            response = requests.post(url, json={"email": email}, headers=headers)
-
-            if response.status_code == 200:
-                token = response.json().get("token")
-                if token:
-                    dispatcher.utter_message(text=f"Token fetched successfully: {token}")
-                    return [SlotSet("auth_token", token), SlotSet("user_email", email)]
+            try:
+                response = requests.post(url, json={"email": email}, headers=headers)
+                logger.info(f"Token fetch response status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    token = response.json().get("token")
+                    if token:
+                        dispatcher.utter_message(text="Authentication successful!")
+                        return [SlotSet("auth_token", token), SlotSet("user_email", email)]
+                    else:
+                        dispatcher.utter_message(text="Sorry, we couldn't retrieve your token.")
+                        return []
                 else:
-                    dispatcher.utter_message(text="Sorry, we couldn't retrieve your token.")
+                    dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+                    logger.error(f"Failed to fetch token. Status code: {response.status_code}")
                     return []
-            else:
-                dispatcher.utter_message(text="There was an issue fetching your token. Please try again later.")
+                    
+            except requests.exceptions.ConnectionError as e:
+                dispatcher.utter_message(text="Unable to connect to the authentication service. Please try again later.")
+                logger.error(f"Failed to connect to backend at {url}. Error: {str(e)}")
                 return []
         else:
             dispatcher.utter_message(text="Please provide a valid email address.")
@@ -926,7 +1189,7 @@ class ActionCheckTokenStatus(Action):
     def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: DomainDict):
         # Retrieve token from the 'auth_token' slot
         token = tracker.get_slot("auth_token")
-
+        logger.info("Action 'action_check_token_status' started.")
         if token:
             # Send token status if it exists
             dispatcher.utter_message(text=f"Your authentication token is: {token}")
@@ -935,3 +1198,586 @@ class ActionCheckTokenStatus(Action):
             dispatcher.utter_message(text="No authentication token is available.")
         
         return []
+
+class ActionSelectFlight(Action):
+    def name(self) -> Text:
+        return "action_select_flight"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+        message = tracker.latest_message.get('text', '').lower()
+        flight_number = None
+        trip_type = tracker.get_slot("trip_type")
+        
+        # Extract the flight number from the message or payload
+        logger.info("Action 'action_select_flight' started.")
+        if message.startswith('/select_flight'):
+            # Handle button payload
+            import json
+            try:
+                json_str = message.replace('/select_flight', '')
+                payload_data = json.loads(json_str)
+                flight_number = int(payload_data.get('flight_number', 0))
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.error(f"Error parsing flight selection payload: {str(e)}")
+                dispatcher.utter_message(text="Invalid flight selection format.")
+                return []
+        else:
+            # Handle text input
+            if '1' in message or 'first' in message:
+                flight_number = 0
+            elif '2' in message or 'second' in message:
+                flight_number = 1
+            elif '3' in message or 'third' in message:
+                flight_number = 2
+
+        try:
+            if trip_type == "single":
+                flight_options = tracker.get_slot("flight_options")
+                if not flight_options or flight_number is None:
+                    dispatcher.utter_message(text="Sorry, I couldn't find the flight option you're referring to.")
+                    return []
+                    
+                selected_flight = flight_options[flight_number]
+                confirmation_message = (
+                    f"✈️ You've selected this flight:\n\n"
+                    f"{selected_flight}\n\n"
+                )
+                dispatcher.utter_message(text=confirmation_message)
+                return [SlotSet("selected_flight", selected_flight)]
+                
+            elif trip_type == "round":
+                selected_outbound = tracker.get_slot("selected_outbound")
+                outbound_options = tracker.get_slot("outbound_options")
+                return_options = tracker.get_slot("return_options")
+                
+                if not selected_outbound:
+                    # Selecting outbound flight
+                    if not outbound_options or flight_number is None:
+                        dispatcher.utter_message(text="Sorry, I couldn't find the outbound flight option you're referring to.")
+                        return []
+                        
+                    selected_flight = outbound_options[flight_number]
+                    
+                    # Create buttons for return flight selection
+                    buttons = []
+                    dispatcher.utter_message(text="✈️ Here are your return flight options:")
+                    for idx, flight in enumerate(return_options, 1):
+                        dispatcher.utter_message(text=f"Option {idx}:\n{flight}")
+                        buttons.append({
+                            "title": f"Select Return Flight {idx}",
+                            "payload": f"/select_flight{{\"flight_number\": \"{idx-1}\"}}"
+                        })
+                    
+                    confirmation_message = (
+                        f"✈️ You've selected this outbound flight:\n\n"
+                        f"{selected_flight}\n\n"
+                        f"Now, please select your return flight:"
+                    )
+                    dispatcher.utter_message(text=confirmation_message, buttons=buttons)
+                    
+                    # Switch flight_options to return options for next selection
+                    return [
+                        SlotSet("selected_outbound", selected_flight),
+                        SlotSet("flight_options", return_options)
+                    ]
+                else:
+                    # Selecting return flight
+                    if not return_options or flight_number is None:
+                        dispatcher.utter_message(text="Sorry, I couldn't find the return flight option you're referring to.")
+                        return []
+                        
+                    selected_return = return_options[flight_number]
+                    confirmation_message = (
+                        f"🎉 Perfect! Here's your round trip selection:\n\n"
+                        f"OUTBOUND:\n{selected_outbound}\n\n"
+                        f"RETURN:\n{selected_return}\n\n"
+                    )
+                    dispatcher.utter_message(text=confirmation_message)
+                    return [
+                        SlotSet("selected_return", selected_return),
+                        SlotSet("selected_flight", f"{selected_outbound}\n\nRETURN:\n{selected_return}")
+                    ]
+            
+        except (IndexError, TypeError) as e:
+            logger.error(f"Error selecting flight: {str(e)}")
+            dispatcher.utter_message(text="Sorry, that flight option is not available.")
+            return []
+
+class ActionSelectHotel(Action):
+    def name(self) -> Text:
+        return "action_select_hotel"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        try:
+            logger.info("Action 'action_select_hotel' started.")
+            # First try to get hotel_number from entities
+            entities = tracker.latest_message.get('entities', [])
+            hotel_number = next(
+                (e['value'] for e in entities if e['entity'] == 'hotel_number'),
+                None
+            )
+            
+            if hotel_number is not None:
+                index = int(hotel_number)
+            else:
+                # Fallback to text parsing
+                selection_text = tracker.latest_message.get('text', '')
+                # Handle both button payload and text input
+                if selection_text.startswith('/select_hotel'):
+                    # Extract number from payload like '/select_hotel{"hotel_number": "0"}'
+                    import json
+                    try:
+                        # Extract the JSON part from the payload
+                        json_str = selection_text.replace('/select_hotel', '')
+                        payload_data = json.loads(json_str)
+                        index = int(payload_data.get('hotel_number', 0))
+                    except json.JSONDecodeError:
+                        dispatcher.utter_message(text="Invalid hotel selection format.")
+                        return []
+                else:
+                    # Handle text input like "select hotel 1"
+                    index = int(selection_text.lower().replace('select hotel ', '').strip()) - 1
+            
+            hotel_options = tracker.get_slot("hotel_options")
+            if not hotel_options:
+                dispatcher.utter_message(text="No hotel options available. Please search for hotels first.")
+                return []
+                
+            if index < 0 or index >= len(hotel_options):
+                dispatcher.utter_message(text="Invalid hotel selection. Please choose from the available options.")
+                return []
+                
+            selected_hotel = hotel_options[index]
+            
+            dispatcher.utter_message(text=f"🏨 You've selected this hotel:\n\n{selected_hotel}")
+            
+            return [
+                SlotSet("selected_hotel", selected_hotel),
+                SlotSet("hotel_search_completed", True)
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error selecting hotel: {str(e)}")
+            dispatcher.utter_message(text="Error processing hotel selection. Please try again.")
+            return []
+
+# class ActionConfirmHotelBooking(Action):
+#     def name(self) -> Text:
+#         return "action_confirm_hotel_booking"
+
+#     def run(self, dispatcher: CollectingDispatcher,
+#             tracker: Tracker,
+#             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        
+#         selected_hotel = tracker.get_slot('selected_hotel')
+
+#         dispatcher.utter_message(
+#             text=f"Perfect! This is your hotel selection:\n\n"
+#                  f"Hotel Details:\n{selected_hotel}\n\n"
+#                  f"Your choice has been saved "
+#         )
+        
+#         return []
+
+class ActionGenerateTravelRequest(Action):
+    def name(self) -> Text:
+        return "action_generate_travel_request"
+    
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        try:
+            logger.info("Action 'action_generate_travel_request' started.")
+            # Get selected flight and hotel
+            selected_flight = tracker.get_slot("selected_flight")
+            selected_hotel = tracker.get_slot("selected_hotel")
+            user_email = tracker.get_slot("user_email")
+            
+            if not selected_flight or not selected_hotel:
+                dispatcher.utter_message(
+                    text="Please complete both flight and hotel selection first."
+                )
+                return []
+
+            # Parse flight details
+            flight_lines = selected_flight.split('\n')
+            trip_type = tracker.get_slot("trip_type")
+
+            if trip_type == "round":
+                # Split the combined flight string into outbound and return sections
+                outbound_section = selected_flight.split('\n\nRETURN:\n')[0]
+                return_section = selected_flight.split('\n\nRETURN:\n')[1]
+                
+                outbound_lines = outbound_section.split('\n')
+                return_lines = return_section.split('\n')
+                
+                # Parse route info for both flights
+                outbound_route = outbound_lines[7].replace('📍 From: ', '').split(' to ')
+                return_route = return_lines[7].replace('📍 From: ', '').split(' to ')
+                
+                flight_details = {
+                    "trip_type": "round",
+                    "origin": {
+                        "airport_code": outbound_route[0],
+                        "city": tracker.get_slot("origin"),
+                        "country": ""
+                    },
+                    "destination": {
+                        "airport_code": outbound_route[1],
+                        "city": tracker.get_slot("destination"),
+                        "country": ""
+                    },
+                    "outbound_flight": {
+                        "airline": outbound_lines[0].replace('🛩️ Airline: ', ''),
+                        "flight_number": outbound_lines[2].replace('🛫 Flight: ', ''),
+                        "cabin_class": outbound_lines[1].replace('💺 Cabin Class: ', ''),
+                        "departure_datetime": outbound_lines[5].replace('🛫 Departure: ', ''),
+                        "arrival_datetime": outbound_lines[6].replace('🛬 Arrival: ', ''),
+                        "duration": outbound_lines[4].replace('⏱️ Duration: ', ''),
+                        "price": float(outbound_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                        "layovers": []
+                    },
+                    "return_flight": {
+                        "airline": return_lines[0].replace('🛩️ Airline: ', ''),
+                        "flight_number": return_lines[2].replace('🛫 Flight: ', ''),
+                        "cabin_class": return_lines[1].replace('💺 Cabin Class: ', ''),
+                        "departure_datetime": return_lines[5].replace('🛫 Departure: ', ''),
+                        "arrival_datetime": return_lines[6].replace('🛬 Arrival: ', ''),
+                        "duration": return_lines[4].replace('⏱️ Duration: ', ''),
+                        "price": float(return_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                        "layovers": []
+                    }
+                }
+            else:
+                # Existing single trip parsing logic
+                route_info = flight_lines[7].replace('📍 From: ', '').split(' to ')
+                flight_details = {
+                    "trip_type": "single",
+                    "origin": {
+                        "airport_code": route_info[0],
+                        "city": tracker.get_slot("origin"),
+                        "country": ""
+                    },
+                    "destination": {
+                        "airport_code": route_info[1],
+                        "city": tracker.get_slot("destination"),
+                        "country": ""
+                    },
+                    "outbound_flight": {
+                        "airline": flight_lines[0].replace('🛩️ Airline: ', ''),
+                        "flight_number": flight_lines[2].replace('🛫 Flight: ', ''),
+                        "cabin_class": flight_lines[1].replace('💺 Cabin Class: ', ''),
+                        "departure_datetime": flight_lines[5].replace('🛫 Departure: ', ''),
+                        "arrival_datetime": flight_lines[6].replace('🛬 Arrival: ', ''),
+                        "duration": flight_lines[4].replace('⏱️ Duration: ', ''),
+                        "price": float(flight_lines[3].replace('💰 Price: RM ', '').replace(',', '')),
+                        "layovers": []
+                    }
+                }
+
+            # Parse hotel details
+            hotel_lines = selected_hotel.split('\n')
+            check_in = hotel_lines[1].replace('📅 Check-in: ', '').strip()
+            check_out = hotel_lines[2].replace('📅 Check-out: ', '').strip()
+            price = float(hotel_lines[4].replace('💰 Price: RM ', '').replace(',', ''))
+            
+            # Calculate nights
+            try:
+                check_in_date = datetime.strptime(check_in, '%Y-%m-%d')
+                check_out_date = datetime.strptime(check_out, '%Y-%m-%d')
+                nights = (check_out_date - check_in_date).days
+            except ValueError as e:
+                logger.error(f"Date parsing error: {str(e)}")
+                dispatcher.utter_message(text="Error processing hotel dates. Please try again.")
+                return []
+
+            hotel_details = {
+                "city": tracker.get_slot("city"),
+                "country": "",  
+                "hotel_name": hotel_lines[0].replace('🏨 Hotel: ', '').strip(),
+                "room_type": hotel_lines[3].replace('🏢 Room Category: ', '').strip(),
+                "check_in": check_in,
+                "check_out": check_out,
+                "nights": nights,
+                "price_per_night": price / nights if nights > 0 else price,
+                "total_price": price,
+                "rating": int(''.join(filter(str.isdigit, hotel_lines[5]))),
+                "amenities": []
+            }
+
+            # Calculate total cost based on trip type
+            total_cost = flight_details["outbound_flight"]["price"]
+            if trip_type == "round":
+                total_cost += flight_details["return_flight"]["price"]
+            total_cost += hotel_details["total_price"]
+
+            # Helper function to extract layovers
+            def extract_layovers(flight_text: str) -> List[Dict[str, Any]]:
+                layovers = []
+                layover_lines = [line for line in flight_text.split('\n') if '🔄 Layovers:' in line]
+                if layover_lines:
+                    layover_info = layover_lines[0].replace('🔄 Layovers: ', '').split(' → ')
+                    for layover in layover_info:
+                        # Parse layover info: "XXX (2h 30m)" format
+                        airport_code = layover.split(' (')[0]
+                        duration = layover.split(' (')[1].replace(')', '')
+                        layovers.append({
+                            "airport": airport_code,
+                            "duration": duration
+                        })
+                return layovers
+
+            if trip_type == "round":
+                # Update outbound and return flight details with layovers
+                outbound_layovers = extract_layovers(outbound_section)
+                return_layovers = extract_layovers(return_section)
+                
+                flight_details["outbound_flight"]["layovers"] = outbound_layovers
+                flight_details["return_flight"]["layovers"] = return_layovers
+            else:
+                # Update single flight details with layovers
+                flight_details["outbound_flight"]["layovers"] = extract_layovers(selected_flight)
+
+            # Update preview message to include layover information
+            def format_layover_info(layovers: List[Dict[str, Any]]) -> str:
+                if not layovers:
+                    return "• No layovers\n"
+                layover_text = "• Layovers:\n"
+                for layover in layovers:
+                    layover_text += f"  - {layover['airport']} ({layover['duration']})\n"
+                return layover_text
+
+            preview_message = (
+                f"📋 Travel Request Preview\n\n"
+                f"✈️ Flight Details:\n"
+                f"• Trip Type: {flight_details['trip_type'].title()}\n"
+                f"• Route: {flight_details['origin']['airport_code']} → {flight_details['destination']['airport_code']}\n\n"
+                f"Outbound Flight:\n"
+                f"• Airline: {flight_details['outbound_flight']['airline']}\n"
+                f"• Flight: {flight_details['outbound_flight']['flight_number']}\n"
+                f"• Class: {flight_details['outbound_flight']['cabin_class']}\n"
+                f"• Departure: {flight_details['outbound_flight']['departure_datetime']}\n"
+                f"• Arrival: {flight_details['outbound_flight']['arrival_datetime']}\n"
+                f"• Duration: {flight_details['outbound_flight']['duration']}\n"
+                f"• Cost: RM {flight_details['outbound_flight']['price']:.2f}\n"
+                f"{format_layover_info(flight_details['outbound_flight']['layovers'])}"
+            )
+
+            if trip_type == "round":
+                cabinClass = flight_details['return_flight']['cabin_class']
+                flightPrice = flight_details['return_flight']['price']
+                preview_message += (
+                    f"\nReturn Flight:\n"
+                    f"• Airline: {flight_details['return_flight']['airline']}\n"
+                    f"• Flight: {flight_details['return_flight']['flight_number']}\n"
+                    f"• Class: {flight_details['return_flight']['cabin_class']}\n"
+                    f"• Departure: {flight_details['return_flight']['departure_datetime']}\n"
+                    f"• Arrival: {flight_details['return_flight']['arrival_datetime']}\n"
+                    f"• Duration: {flight_details['return_flight']['duration']}\n"
+                    f"• Cost: RM {flight_details['return_flight']['price']:.2f}\n"
+                    f"{format_layover_info(flight_details['return_flight']['layovers'])}"
+                )
+            
+            airLineName = flight_details['outbound_flight']['airline']
+            origin = flight_details['origin']['airport_code']
+            destination = flight_details['destination']['airport_code']
+            tripType = flight_details['trip_type'].title()
+            cabinClass = flight_details['outbound_flight']['cabin_class']
+            flightCode = flight_details['outbound_flight']['flight_number']
+            flightPrice = flight_details['outbound_flight']['price']
+            
+
+            hotelName = hotel_details['hotel_name']
+            hotelCheckIn = hotel_details['check_in']
+            hotelCheckOut = hotel_details['check_out']
+            hotelRating = hotel_details['rating']
+            hotelRoomCategory = hotel_details['room_type']
+            hotelTotalPrice = hotel_details['total_price']
+
+
+            # generate pdf
+
+            token = tracker.get_slot("auth_token")
+            # Define the URL for the backend PDF generation endpoint
+            backend_url = os.getenv('BACKEND_URL', 'http://localhost:5000')
+            # backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-custom"
+            backend_url_pdf = f"{backend_url}/api/chatbot/chatbots/generate-tempo-custom"
+            backend_url_download = f"{backend_url}/api/chatbot/chatbots/generate-pdf/downloadTempo"
+            
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+
+            preview_message += (
+                f"\n🏨 Hotel Details:\n"
+                f"• Hotel: {hotel_details['hotel_name']}\n"
+                f"• Room: {hotel_details['room_type']}\n"
+                f"• Check-in: {hotel_details['check_in']}\n"
+                f"• Check-out: {hotel_details['check_out']}\n"
+                f"• Nights: {hotel_details['nights']}\n"
+                f"• Price per Night: RM {hotel_details['price_per_night']:.2f}\n"
+                f"• Total Hotel Cost: RM {hotel_details['total_price']:.2f}\n"
+                f"• Rating: {hotel_details['rating']} Star\n\n"
+                f"💰 Total Trip Cost: RM {total_cost:.2f}\n\n"
+                f"Would you like to confirm and save this travel request?"
+            )
+            current_date = datetime.now()
+            formatted_date = current_date.strftime("%Y-%m-%d")
+            # Sample data to send to the PDF generation API
+            data = {
+                "basicInfo": {
+                    "username": tracker.get_slot("user_email"),
+                    "email": tracker.get_slot("user_email"),
+                    "current_date": formatted_date,
+                    "department": "HR Department",
+                    "employeeId": "1234567",
+                    "phoneNum": "01743268489",
+                },
+                "flight": {
+                    "airLineName": airLineName,
+                    "origin": origin,
+                    "destination": destination,
+                    "departureDate": tracker.get_slot("departure_date"),
+                    "returnDate": tracker.get_slot("return_date"),
+                    "tripType": tripType,
+                    "cabinClass": cabinClass,
+                    "flightCode": flightCode,
+                    "flightPrice": flightPrice
+                },
+                "hotel": {
+                    "hotelName": hotelName,
+                    "city": tracker.get_slot("city"),
+                    "check_in_date": hotelCheckIn,
+                    "check_out_date": hotelCheckOut,
+                    "hotelRating": hotelRating,
+                    "roomCategory": hotelRoomCategory,
+                    "hotelPrice": hotelTotalPrice,
+                }
+            }
+            # Create the complete travel request object
+            travel_request = {
+                "flight_details": flight_details,
+                "hotel_details": hotel_details,
+                "total_cost": total_cost,
+                "user_email": user_email,
+                "pdfData" : data,
+                "preview_message": preview_message
+            }
+
+            # Show preview with confirmation buttons
+            dispatcher.utter_message(
+                text=preview_message,
+                buttons=[
+                    {"title": "✅ Yes, save it", "payload": "/confirm_save_request"},
+                    {"title": "❌ No, cancel", "payload": "/deny"}
+                ]
+            )
+
+            # Make a request to the backend to generate the PDF
+            try:
+                response = requests.post(backend_url_pdf, json=data, headers=headers)
+                response.raise_for_status()
+                
+                response_data = response.json()
+                # file_id = response_data.get("fileId")
+
+                # # Construct download link
+                download_link = f"{backend_url_download}/12345"
+                dispatcher.utter_message(
+                    text=f"Your PDF has been generated successfully! Click the link to download: {download_link}",
+                    buttons=[
+                        {
+                            "title": "Download it",
+                            "payload": f"/open_link{{\"link\": \"{download_link}\"}}"
+                        }
+                    ]
+                )
+
+            except requests.exceptions.RequestException as e:
+                dispatcher.utter_message(text="Sorry, an error occurred while generating the PDF.")
+                print(f"Error generating PDF: {e}")
+
+            return [SlotSet("travel_request_preview", travel_request)]
+
+        except Exception as e:
+            dispatcher.utter_message(
+                text=f"Error generating travel request preview: {str(e)}"
+            )
+            return []
+class ActionOpenLink(Action):
+    def name(self) -> str:
+        return "action_open_link"
+
+    def run(self, dispatcher: CollectingDispatcher, tracker: Tracker, domain: dict):
+        logger.info("Action 'action_open_link' started.")
+        link = tracker.get_slot('link')
+        if link:
+            # Open the link in the user's default browser (or perform any other action you need)
+            try:
+                webbrowser.open(link)
+                dispatcher.utter_message(text="Opening the link...")
+            except Exception as e:
+                dispatcher.utter_message(text=f"Failed to open the link: {e}")
+        else:
+            error_message = "The 'link' slot is empty. Cannot open the link."
+            dispatcher.utter_message(text=error_message)
+            # Optionally, log the error or take other actions
+            print(error_message)  # Logs to the console for debugging
+
+        return []
+class ActionInitializeAuth(Action):
+    def name(self) -> Text:
+        return "action_initialize_auth"
+
+    async def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any]
+    ) -> List[Dict[Text, Any]]:
+        # Get metadata from the request
+        metadata = tracker.latest_message.get('metadata', {})
+        auth_token = metadata.get('auth_token')
+        
+        if not auth_token:
+            dispatcher.utter_message(text="No authentication token found.")
+            return []
+            
+        try:
+            # Get the database instance
+            db_client = MongoDBClient()
+            user_collection = db_client.database["users"]
+            
+            # Verify token and get user data
+            user = user_collection.find_one({"token": auth_token})
+            
+            if user:
+                # Set both auth_token and user_email slots
+                return [
+                    SlotSet("auth_token", auth_token),
+                    SlotSet("user_email", user.get("email")),
+                    SlotSet("cabin_class", user.get("preferences", {}).get("cabinClass")),
+                    SlotSet("hotel_rating", user.get("preferences", {}).get("hotelRating"))
+                ]
+            else:
+                dispatcher.utter_message(text="Invalid authentication token.")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error initializing auth: {str(e)}")
+            return []

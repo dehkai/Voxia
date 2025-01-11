@@ -8,19 +8,37 @@ const client = new MongoClient(uri, {
       version: ServerApiVersion.v1,
       strict: true,
       deprecationErrors: true,
-    }
-  });
-  async function run() {
+    },
+    // Add connection timeout settings
+    connectTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    // Add automatic reconnect options
+    maxPoolSize: 50,
+    retryWrites: true,
+    retryReads: true
+});
+
+async function run() {
+  let retries = 3;
+  while (retries > 0) {
     try {
-      // Connect the client to the server	(optional starting in v4.7)
       await client.connect();
-      // Send a ping to confirm a successful connection
       await client.db("admin").command({ ping: 1 });
-      console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } finally {
-      // Ensures that the client will close when you finish/error
-      await client.close();
+      console.log("Successfully connected to MongoDB!");
+      return client; // Return the connected client
+    } catch (error) {
+      console.error(`Connection attempt failed. Retries left: ${retries-1}`);
+      console.error(error);
+      retries--;
+      if (retries === 0) {
+        throw error;
+      }
+      // Wait for 1 second before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
-  run().catch(console.dir);
+}
+
+// Export both the client and the connection function
+module.exports = { client, run };
   

@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "frontend": "cd frontend && npm start",
     "backend": "cd backend && npm start",
-    "dev": "concurrently \"npm run frontend\" \"npm run backend\""
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
+    "build-frontend": "cd frontend && npm install && npm run build",
+    "build-backend": "cd backend && npm install",
+    "build": "concurrently \"npm run build-frontend\" \"npm run build-backend\""
   },
   "keywords": [],
   "author": "",
@@ -18,7 +21,6 @@
     "@mui/icons-material": "^6.1.5",
     "@mui/material": "^6.1.5",
     "@mui/x-charts": "^7.21.0",
-    "@mui/x-data-grid": "^7.21.0",
     "@mui/x-date-pickers": "^7.21.0",
     "@mui/x-tree-view": "^7.21.0",
     "@react-spring/web": "^9.7.5",

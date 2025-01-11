@@ -9,7 +9,7 @@ services:
     command: npx nodemon index.js  # Use nodemon for auto-reloading in development
     restart: always
     env_file:
-      - ./backend/.env
+      - ./backend/.backend.env
     networks:
       - Voxia
     profiles:
@@ -57,29 +57,48 @@ services:
       - prod
 
   rasa:
-    image: rasa/rasa:2.0.4-full
+    image: rasa_custom
     user: "1000:1000"
     ports:
       - "5005:5005"
     volumes:
       - "./rasa/app/:/app/"
+    environment:
+      - BACKEND_URL=http://backend:5000
     command:
       - run
-      - --endpoints 
-      - endpoints.yml
-      - --debug
+      - --enable-api
+      - --cors
+      - "*"
+      - --port
+      - "5005"
+      - --endpoints
+      - endpoints.docker.yml
     networks:
       - Voxia
+    depends_on:
+      - action_server
+      - duckling
+      - backend
+    profiles:
+      - dev
 
   action_server:
-    image: rasa/rasa-sdk:2.0.0
+    build:
+      context: ./rasa/app
+      dockerfile: Dockerfile.action
     user: "1000:1000"
     ports:
       - "5055:5055"
     volumes:
-      - "./rasadocker/app/actions:/app/actions"
+      - "./rasa/app/actions:/app/actions"
+    environment:
+      - BACKEND_URL=http://backend:5000
+      - MONGODB_ATLAS_URI=${MONGODB_ATLAS_URI}
     networks:
       - Voxia
+    env_file:
+      - ./.env
 
   duckling:
     image: rasa/duckling:latest

@@ -61,6 +61,11 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
   },
 }));
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default function SignIn(props) {
   const [emailError, setEmailError] = useState(false);
   const [emailErrorMessage, setEmailErrorMessage] = useState('');
@@ -71,6 +76,7 @@ export default function SignIn(props) {
   const [isLoading, setIsLoading] = useState(false); // Add loading state
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
+  
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -78,6 +84,29 @@ export default function SignIn(props) {
   // Add handler for remember me checkbox
   const handleRememberMe = (event) => {
     setRememberMe(event.target.checked);
+  };
+
+  const attemptLogin = async (email, password, retryCount = 0) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+      return { response, result };
+    } catch (error) {
+      if (retryCount < MAX_RETRIES) {
+        await wait(RETRY_DELAY);
+        return attemptLogin(email, password, retryCount + 1);
+      }
+      throw error;
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -94,22 +123,7 @@ export default function SignIn(props) {
       const email = formData.get('email');
       const password = formData.get('password');
 
-      console.log('Attempting login with:', { email });
-
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-
-      console.log('Response status:', response.status);
-
-      const result = await response.json();
-      console.log('Login response:', result);
+      const { response, result } = await attemptLogin(email, password);
 
       if (response.ok) {
         // Store user data in the selected storage based on rememberMe state

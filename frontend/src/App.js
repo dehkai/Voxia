@@ -9,11 +9,16 @@ import SignIn from "./pages/SignIn";
 import AdminDashboard from "./pages/Admin_Dashboard";
 import EmployeeDashboard from "./pages/Employee_Dashboard";
 import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword"; // Import the ResetPassword component
+import ResetPassword from "./pages/ResetPassword";
 import UserProfile from "./pages/User_Profile";
+import TravelRequestsList from './pages/TravelRequestsList';
+import EmployeeDetails from './pages/EmployeeDetails';
+import TravelReports from './pages/TravelReports';
+import TravelRequests from './pages/TravelRequests';
+import TravelHistory from './pages/UpcomingTrips';
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
-import AdminLayout from "./layout/AdminLayout"; // Import Admin Layout
-import EmployeeLayout from "./layout/EmployeeLayout"; // Import Employee Layout
+import AdminLayout from "./layout/AdminLayout"; 
+import EmployeeLayout from "./layout/EmployeeLayout"; 
 
 function App() {
   const [authState, setAuthState] = useState(isAuthenticated());
@@ -80,60 +85,40 @@ function App() {
                 <SignIn />
               ) : (
                 <Navigate
-                  to={
-                    auth.user?.role === "admin"
-                      ? "/admin_dashboard"
-                      : "/employee_dashboard"
-                  }
+                  to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"}
                 />
               )
             }
           />
 
-          {/* Forgot Password Route */}
-          <Route path="/forgot-password" 
-          element={<ForgotPassword />} />
+          {/* User Profile Route */}
+          <Route path="/user_profile" element={<UserProfile />} />
 
-          {/* Reset Password Route - with token handling */}
-          <Route
-            path="/reset-password"
-            element={<ResetPassword />} // Make sure the component handles the token
-          />
-          <Route path="/" element={<Navigate to={!auth.isLoggedIn ? "/signin" : auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />} />
+          {/* Forgot Password Route */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          {/* Reset Password Route */}
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Pages for Travel Request*/}
+          <Route path="/travel-requests-list" element={<TravelRequestsList />} />
+
+          {/* Pages for Employees' Details*/}
+          <Route path="/employee-details" element={<EmployeeDetails />} />
+
+          {/* Pages for Travel' Report*/}
+          <Route path="/travel-reports" element={<TravelReports />} />
+
+          {/* Pages for My Travel' Request*/}
+          <Route path="/travel-requests" element={<TravelRequests />} />
+
+          {/* Pages for Upcoming Trips*/}
+          <Route path="/upcoming-trips" element={<TravelHistory />} />
 
           {/* Root layout for all other routes */}
           <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>
-            <Route
-              path="admin_dashboard"
-              element={
-                auth.isLoggedIn && auth.user?.role === "admin" ? (
-                  <AdminDashboard />
-                ) : (
-                  <Navigate to="/signin" />
-                )
-              }
-            />
-            <Route
-              path="employee_dashboard"
-              element={
-                auth.isLoggedIn && auth.user?.role === "employee" ? (
-                  <EmployeeDashboard />
-                ) : (
-                  <Navigate to="/signin" />
-                )
-              }
-            />
-            <Route
-              path="signin"
-              element={
-                !auth.isLoggedIn ? (
-                  <SignIn />
-                ) : (
-                  <Navigate to={auth.user?.role === "admin" ? "/admin_dashboard" : "/employee_dashboard"} />
-                )
-              }
-            />
-            <Route path="user_profile" element={<UserProfile />} />
+            <Route path="signin" element={<SignIn />} />
+            
           </Route>
         </Routes>
       </Router>
