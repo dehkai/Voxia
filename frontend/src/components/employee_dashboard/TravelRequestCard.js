@@ -4,10 +4,8 @@ import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
-import AssignmentIcon from '@mui/icons-material/Assignment';  // Updated icon for reports
 import { useNavigate } from 'react-router-dom';
 import FlightTakeoff from '@mui/icons-material/FlightTakeoff';
-import PeopleIcon from '@mui/icons-material/People';  // Updated icon
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 

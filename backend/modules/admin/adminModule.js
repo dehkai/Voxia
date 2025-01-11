@@ -23,6 +23,19 @@ router.get('/accepted-travel-requests', DashboardController.getAcceptedTravelReq
 // New route for updating travel request status (PUT method)
 router.put('/travel-requests/:id/status', DashboardController.updateTravelRequestStatus);
 
+// Route to get the status of the latest travel request by user email
+router.get('/travel-requests/:user_email/latest-status', DashboardController.getLatestTravelRequestStatusByUserEmail);
+
+// Route to get the travel request count for the current user
+router.get('/travel-request-count/:userEmail', DashboardController.getTravelRequestCountByUser);
+
+// Route to get the accepted travel request count for the current user
+router.get('/accepted-travel-request-count/:userEmail', DashboardController.getAcceptedTravelRequestCountByUser);
+
+// Route to get travel requests for the current user
+router.get('/travel-requests/:userEmail', DashboardController.getAllTravelRequestsByCurrentUser);
+
+
 module.exports = {
     dashboardRoutes: router
 };

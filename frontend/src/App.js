@@ -15,7 +15,7 @@ import TravelRequestsList from './pages/TravelRequestsList';
 import EmployeeDetails from './pages/EmployeeDetails';
 import TravelReports from './pages/TravelReports';
 import TravelRequests from './pages/TravelRequests';
-import TravelHistory from './pages/TravelHistory';
+import TravelHistory from './pages/UpcomingTrips';
 import { AuthContext, isAuthenticated, clearAuth } from "./utils/auth";
 import AdminLayout from "./layout/AdminLayout"; 
 import EmployeeLayout from "./layout/EmployeeLayout"; 
@@ -112,8 +112,8 @@ function App() {
           {/* Pages for My Travel' Request*/}
           <Route path="/travel-requests" element={<TravelRequests />} />
 
-          {/* Pages for My Travel' History*/}
-          <Route path="/travel-history" element={<TravelHistory />} />
+          {/* Pages for Upcoming Trips*/}
+          <Route path="/upcoming-trips" element={<TravelHistory />} />
 
           {/* Root layout for all other routes */}
           <Route path="/*" element={auth.isLoggedIn && auth.user?.role === "admin" ? <AdminLayout /> : <EmployeeLayout />}>

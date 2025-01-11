@@ -5,7 +5,7 @@ import CardContent from '@mui/material/CardContent';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-function StatCard({ title, value }) {
+function StatCard({ title, value, color }) {
   return (
     <Card variant="outlined" sx={{ height: '100%', flexGrow: 1 }}>
       <CardContent>
@@ -18,15 +18,27 @@ function StatCard({ title, value }) {
               <Typography
                 variant="h4"
                 component="p"
+                style={{ color: color}}
               >
                 {value}
               </Typography>
+              
             </Stack>
           </Stack>
           {/* Simplified summary statement */}
           <Typography variant="body2">
-            Your {title} is {value}.
-          </Typography>
+        Your {title} is{' '}
+        <Typography
+            component="span"
+            sx={{
+              color: value === 'PENDING' ? 'orange' : value === 'APPROVED' ? 'green' : value === 'REJECTED' ? 'red' : 'black',
+              fontWeight: 'bold', // Optional: Make the value bold
+            }}
+        >
+            {value}
+        </Typography>.
+</Typography>
+
         </Stack>
       </CardContent>
     </Card>
