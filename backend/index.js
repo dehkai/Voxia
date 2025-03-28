@@ -8,6 +8,9 @@ const { emailRoutes } = require('./modules/email/emailModule');
 const { dashboardRoutes } = require('./modules/admin/adminModule'); 
 
 require('dotenv').config();
+require("./instrument.js");
+
+const Sentry = require("@sentry/node");
 
 const app = express();
 
@@ -19,6 +22,8 @@ const allowedOrigins = [
   'https://rasaactions.voxia.my',
   'https://voxia.my',        // Voxia production 
 ];
+
+Sentry.setupExpressErrorHandler(app);
 
 // Enhanced CORS configuration
 app.use(cors({
