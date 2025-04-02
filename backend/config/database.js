@@ -8,14 +8,7 @@ const client = new MongoClient(uri, {
       version: ServerApiVersion.v1,
       strict: true,
       deprecationErrors: true,
-    },
-    // Add connection timeout settings
-    connectTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    // Add automatic reconnect options
-    maxPoolSize: 50,
-    retryWrites: true,
-    retryReads: true
+    }
 });
 
 async function run() {

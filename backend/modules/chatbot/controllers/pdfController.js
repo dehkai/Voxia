@@ -9,19 +9,17 @@ const fs = require('fs');
 
 
 const dbUri = process.env.MONGODB_ATLAS_URI;
-console.log("Database URI being used:", dbUri);
+//console.log("Database URI being used:", dbUri);
 
 const conn = mongoose.createConnection(dbUri, {
     dbName: 'Voxia',
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
 });
 
 let db, gfs;
 conn.once('open', () => {
     db = conn.db;  // Get the database instance
-    console.log("Connected to database:", db.databaseName);
-    console.log('MongoDB Connection URI:', dbUri);
+    //console.log("Connected to database:", db.databaseName);
+    //console.log('MongoDB Connection URI:', dbUri);
 
     gfs = new GridFSBucket(db, {
         bucketName: 'requestForm',  // Bucket name to store the PDFs
