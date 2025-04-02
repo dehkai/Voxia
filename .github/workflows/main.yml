@@ -31,20 +31,14 @@ jobs:
           echo "MONGODB_ATLAS_URI=${{ secrets.MONGODB_ATLAS_URI }}" >> ./.env
           echo "BACKEND_URL=${{ secrets.BACKEND_URL }}" >> ./.env
 
-      - name: Build Docker images
-        run: |
-          docker build -t dehkai/voxia-backend:v1.0 ./backend
-          docker build -t dehkai/voxia-frontend:v1.0 ./frontend
-          docker build -t dehkai/voxia-rasa:v1.0 ./rasa/app
-          docker build -t dehkai/voxia-action-server:v1.0 -f ./rasa/app/Dockerfile.action ./rasa/app
-          
-
-      - name: Push Docker images
+      - name: Log in to Docker Hub
         if: github.ref == 'refs/heads/main'
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker push dehkai/voxia-backend:v1.0
-          docker push dehkai/voxia-frontend:v1.0
-          docker push dehkai/voxia-rasa:v1.0
-          docker push dehkai/voxia-action-server:v1.0
 
+      - name: Build and Push Multi-Platform Images
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 -t dehkai/voxia-backend:v1.0 --push ./backend
+          docker buildx build --platform linux/amd64,linux/arm64 -t dehkai/voxia-frontend:v1.0 --push ./frontend
+          docker buildx build --platform linux/amd64,linux/arm64 -t dehkai/voxia-rasa:v1.0 --push ./rasa/app
+          docker buildx build --platform linux/amd64,linux/arm64 -t dehkai/voxia-action-server:v1.0 --push -f ./rasa/app/Dockerfile.action ./rasa/app
