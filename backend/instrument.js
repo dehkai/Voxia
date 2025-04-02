@@ -1,18 +1,26 @@
 require("dotenv").config();
 const Sentry = require("@sentry/node");
-const { nodeProfilingIntegration } = require("@sentry/profiling-node");
 
-Sentry.init({
+// Get Node.js major version
+const nodeMajorVersion = parseInt(process.version.slice(1).split('.')[0], 10);
+
+// Initialize Sentry with conditional profiling based on Node.js version
+const sentryOptions = {
   dsn: process.env.SENTRY_DSN,
-  integrations: [
-    nodeProfilingIntegration(),
-  ],
-  // Tracing
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
+  tracesSampleRate: 1.0, // Capture 100% of the transactions
+  integrations: []
+};
 
-  // Set sampling rate for profiling - this is evaluated only once per SDK.init
-  profileSessionSampleRate: 1.0,
-});
+// Only enable profiling for supported Node.js versions (16, 18, 20, 22)
+if ([16, 18, 20, 22].includes(nodeMajorVersion)) {
+  const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+  sentryOptions.integrations.push(nodeProfilingIntegration());
+  sentryOptions.profileSessionSampleRate = 1.0;
+} else {
+  console.log(`Sentry profiling is not enabled for Node.js version ${process.version}`);
+}
+
+Sentry.init(sentryOptions);
 // Manually call startProfiler and stopProfiler
 // to profile the code in between
 Sentry.profiler.startProfiler();
