@@ -41,7 +41,7 @@ Voxia is an intelligent AI assistant platform that specializes in travel-related
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Voxia.git
+git clone https://github.com/dehkai/Voxia.git
 cd Voxia
 ```
 
